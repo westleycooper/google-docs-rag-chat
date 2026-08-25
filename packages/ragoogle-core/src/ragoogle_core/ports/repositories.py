@@ -10,11 +10,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
+from ragoogle_core.evaluation.dataset import Dataset
+from ragoogle_core.evaluation.run import EvaluationRun
 from ragoogle_core.ingestion.run import IngestionRun
 from ragoogle_core.ingestion.source import SourceConfig
 from ragoogle_core.ports.document_source import SourceDocument
 from ragoogle_core.retrieval.chunk import DocumentRef
-from ragoogle_core.shared.identifiers import DocumentId, SourceId
+from ragoogle_core.shared.identifiers import DatasetId, DocumentId, RunId, SourceId
 
 
 @runtime_checkable
@@ -66,4 +68,40 @@ class RunJournal(Protocol):
 
     async def latest(self, source_id: SourceId) -> IngestionRun | None:
         """The most recent run, for resume and for the config UI's status."""
+        ...
+
+
+@runtime_checkable
+class EvaluationStore(Protocol):
+    """Datasets and their runs (ADR-0010)."""
+
+    async def save_dataset(self, dataset: Dataset) -> None:
+        """Persist a dataset version.
+
+        Versions are additive: saving v2 leaves v1 intact, because a run that
+        scored v1 is only interpretable while v1 still exists.
+        """
+        ...
+
+    async def get_dataset(self, dataset_id: DatasetId, version: int | None = None) -> Dataset:
+        """Load a dataset. Without a version, the latest."""
+        ...
+
+    async def list_datasets(self) -> list[Dataset]:
+        """The latest version of every dataset, without its cases.
+
+        Cases are omitted because the listing feeds a config-page index, and
+        loading every case of every dataset to render a list of names is work
+        nobody asked for.
+        """
+        ...
+
+    async def save_run(self, run: EvaluationRun) -> None:
+        """Persist a run and its per-case results."""
+        ...
+
+    async def get_run(self, run_id: RunId) -> EvaluationRun: ...
+
+    async def list_runs(self, dataset_id: DatasetId, limit: int = 20) -> list[EvaluationRun]:
+        """Recent runs, newest first, so two configurations can be compared."""
         ...

@@ -187,3 +187,110 @@ class RunOut(BaseModel):
     reconciled: bool
     error: str | None
     skips: list[SkipOut]
+
+
+# -- evaluation (ADR-0010) ------------------------------------------------
+
+
+class CaseIn(BaseModel):
+    question: str = Field(min_length=1, max_length=8000)
+    expected_answer: str | None = None
+    expected_chunk_ids: list[str] = Field(
+        default=[],
+        description="Chunks a correct answer should have retrieved. Supplying "
+        "these is what makes retrieval scorable independently of "
+        "generation, and a regression attributable to a stage.",
+    )
+    tags: list[str] = []
+    source_turn_id: str | None = Field(
+        default=None,
+        description="Set when promoting a real turn, so datasets stay grounded "
+        "in answers users actually got wrong.",
+    )
+    notes: str | None = None
+
+
+class CaseOut(CaseIn):
+    case_id: str
+    scores_retrieval: bool
+    scores_generation: bool
+
+
+class DatasetIn(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+
+
+class DatasetOut(BaseModel):
+    dataset_id: str
+    name: str
+    version: int
+    description: str | None
+    case_count: int
+    cases: list[CaseOut] = []
+
+
+class RetrievalScoreOut(BaseModel):
+    recall: float | None = Field(description="null when the case has no ground truth")
+    precision: float | None
+    mrr: float | None
+    ndcg: float | None
+    k: int
+    retrieved_count: int
+    expected_count: int
+    found_nothing: bool
+
+
+class GenerationScoreOut(BaseModel):
+    faithfulness: float
+    answer_relevance: float
+    citation_correctness: float
+    rationale: str | None
+    is_hallucinating: bool = Field(
+        description="Low faithfulness with high relevance: fluent, confident and "
+        "wrong. Named rather than averaged away because the "
+        "citations make it look verified."
+    )
+
+
+class CaseResultOut(BaseModel):
+    case_id: str
+    retrieval: RetrievalScoreOut | None
+    generation: GenerationScoreOut | None
+    latency_ms: float
+    error: str | None
+
+
+class EvaluationConfigOut(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
+    embedding_model: str
+    embedding_dimensions: int
+    chat_model: str
+    retrieval_limit: int
+    candidate_limit: int
+    rrf_k: int
+    rerank_enabled: bool
+    rerank_model: str | None
+    prompt_version: str
+    judge_model: str | None
+
+
+class EvaluationRunOut(BaseModel):
+    run_id: str
+    dataset_id: str
+    dataset_version: int
+    state: str
+    started_at: datetime | None
+    finished_at: datetime | None
+    duration_seconds: float | None
+    config: EvaluationConfigOut
+    mean_recall: float | None
+    mean_mrr: float | None
+    mean_ndcg: float | None
+    mean_faithfulness: float | None
+    hallucination_count: int
+    missed_entirely_count: int
+    failure_count: int
+    error: str | None
+    results: list[CaseResultOut]

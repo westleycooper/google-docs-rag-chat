@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     candidate_limit: int = Field(default=50, ge=1, le=500)
     rrf_k: int = Field(default=60, ge=1)
     rerank_enabled: bool = True
+    rerank_model: str = "rerank-2.5"
 
     context_window: int = Field(default=200_000, ge=1000)
     reserved_for_response: int = Field(default=8_192, ge=256)

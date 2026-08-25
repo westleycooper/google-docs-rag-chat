@@ -15,6 +15,7 @@ from ragoogle_core.application.chat import (
     TraceEmitted,
     TurnFinished,
 )
+from ragoogle_core.application.evaluation import EvaluationRequest, RunEvaluation
 from ragoogle_core.application.ingestion import IngestRequest, IngestSource
 from ragoogle_core.application.retrieval import (
     RetrievalRequest,
@@ -28,11 +29,13 @@ __all__ = [
     "ChatEvent",
     "ChatRequest",
     "CitationsAttached",
+    "EvaluationRequest",
     "IngestRequest",
     "IngestSource",
     "RetrievalRequest",
     "RetrievalResult",
     "RetrieveContext",
+    "RunEvaluation",
     "TextDelta",
     "TraceEmitted",
     "TurnFinished",

@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 
 from ragoogle_api import __version__
 from ragoogle_api.deps import Container, build_container
-from ragoogle_api.routers import chat, health, models, sources
+from ragoogle_api.routers import chat, evals, health, models, sources
 from ragoogle_api.settings import Settings, get_settings
 from ragoogle_core.shared.errors import (
     ConfigurationError,
@@ -87,6 +87,7 @@ def create_app(container: Container | None = None) -> FastAPI:
     app.include_router(chat.router)
     app.include_router(models.router)
     app.include_router(sources.router)
+    app.include_router(evals.router)
 
     @app.exception_handler(NotFound)
     async def _not_found(request: Request, exc: NotFound) -> JSONResponse:

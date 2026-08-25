@@ -24,14 +24,17 @@ from ragoogle_core.ports.reranker import Reranker
 from ragoogle_core.ports.vector_store import VectorStore
 from ragoogle_infra.chat.anthropic_model import AnthropicChatModel, AnthropicTokenizer
 from ragoogle_infra.embedding.voyage import VoyageEmbeddingProvider
+from ragoogle_infra.evaluation.judge import AnthropicJudge
 from ragoogle_infra.persistence.credentials import PgCredentialStore
 from ragoogle_infra.persistence.engine import make_engine
+from ragoogle_infra.persistence.evaluation import PgEvaluationStore
 from ragoogle_infra.persistence.repositories import (
     PgDocumentCatalogue,
     PgRunJournal,
     PgSourceCatalogue,
 )
 from ragoogle_infra.persistence.vector_store import PgVectorStore
+from ragoogle_infra.rerank.voyage import VoyageReranker
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +57,8 @@ class Container:
     # field rather than a hard-coded None. Absent, retrieval degrades to fused
     # order and says so in the turn's `degraded` list.
     reranker: Reranker | None = None
+    evaluations: PgEvaluationStore | None = None
+    judge: AnthropicJudge | None = None
 
     @property
     def retrieve(self) -> RetrieveContext:
@@ -87,6 +92,13 @@ async def build_container(settings: Settings) -> Container:
         embeddings=embeddings,
         store=store,
         chat_model=AnthropicChatModel(api_key=settings.anthropic_api_key),
+        # Absent by configuration, retrieval degrades to fused RRF order and
+        # reports that in the turn's `degraded` list rather than hiding it.
+        reranker=(
+            VoyageReranker(api_key=settings.voyage_api_key, model=settings.rerank_model)
+            if settings.rerank_enabled
+            else None
+        ),
         tokenizer=AnthropicTokenizer(
             api_key=settings.anthropic_api_key, model_id=settings.default_chat_model
         ),
@@ -95,6 +107,8 @@ async def build_container(settings: Settings) -> Container:
             if settings.credential_secret
             else None
         ),
+        evaluations=PgEvaluationStore(engine),
+        judge=AnthropicJudge(api_key=settings.anthropic_api_key),
         sources=PgSourceCatalogue(engine),
         documents=PgDocumentCatalogue(engine),
         journal=PgRunJournal(engine),

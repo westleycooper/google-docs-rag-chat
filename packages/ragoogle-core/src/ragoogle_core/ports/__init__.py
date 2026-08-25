@@ -18,8 +18,10 @@ from ragoogle_core.ports.document_source import (
     SourceListing,
 )
 from ragoogle_core.ports.embedding import EmbeddingProvider
+from ragoogle_core.ports.judge import AnswerJudge
 from ragoogle_core.ports.repositories import (
     DocumentCatalogue,
+    EvaluationStore,
     RunJournal,
     SourceCatalogue,
 )
@@ -28,11 +30,13 @@ from ragoogle_core.ports.tokenizer import Tokenizer
 from ragoogle_core.ports.vector_store import SearchHit, VectorStore
 
 __all__ = [
+    "AnswerJudge",
     "ChatModel",
     "CredentialStore",
     "DocumentCatalogue",
     "DocumentSource",
     "EmbeddingProvider",
+    "EvaluationStore",
     "ModelReply",
     "ModelSpec",
     "Reranker",

@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 
+from ragoogle_core.evaluation.run import GenerationScore
 from ragoogle_core.ingestion.skip import SkipRecord
 from ragoogle_core.ports import ModelReply, ModelSpec, SearchHit, SourceDocument, SourceListing
 from ragoogle_core.retrieval.chunk import Chunk, DocumentRef
@@ -279,3 +280,59 @@ class FakeRunJournal:
 
     async def latest(self, source_id: SourceId) -> object | None:
         return self.previous
+
+
+@dataclass
+class FakeAnswerJudge:
+    """Satisfies `AnswerJudge`.
+
+    Scores by lexical overlap between the answer and its sources -- crude, but
+    it moves in the right direction for the property the eval tests care about:
+    a grounded answer scores higher than an invented one.
+    """
+
+    calls: list[dict[str, object]] = field(default_factory=list)
+    fixed: object | None = None
+    model: str = "fake-judge"
+
+    async def judge(
+        self,
+        *,
+        question: str,
+        answer: str,
+        sources: Sequence[str],
+        expected_answer: str | None = None,
+        rubric: str | None = None,
+    ) -> GenerationScore:
+        self.calls.append(
+            {
+                "question": question,
+                "answer": answer,
+                "sources": list(sources),
+                "expected": expected_answer,
+                "rubric": rubric,
+            }
+        )
+        if self.fixed is not None:
+            assert isinstance(self.fixed, GenerationScore)
+            return self.fixed
+
+        source_words = {w.lower().strip(".,") for s in sources for w in s.split()}
+        answer_words = [w.lower().strip(".,") for w in answer.split()]
+        grounded = (
+            sum(1 for w in answer_words if w in source_words) / len(answer_words)
+            if answer_words
+            else 0.0
+        )
+        question_words = {w.lower().strip("?,.") for w in question.split()}
+        relevance = (
+            sum(1 for w in answer_words if w in question_words) / len(answer_words)
+            if answer_words
+            else 0.0
+        )
+        return GenerationScore(
+            faithfulness=min(1.0, grounded),
+            answer_relevance=min(1.0, relevance * 3),
+            citation_correctness=1.0 if "[" in answer else 0.0,
+            rationale="overlap heuristic",
+        )

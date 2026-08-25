@@ -1,6 +1,205 @@
 {
   "components": {
     "schemas": {
+      "CaseIn": {
+        "properties": {
+          "expected_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Answer"
+          },
+          "expected_chunk_ids": {
+            "default": [],
+            "description": "Chunks a correct answer should have retrieved. Supplying these is what makes retrieval scorable independently of generation, and a regression attributable to a stage.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Expected Chunk Ids",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "question": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "source_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when promoting a real turn, so datasets stay grounded in answers users actually got wrong.",
+            "title": "Source Turn Id"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "CaseIn",
+        "type": "object"
+      },
+      "CaseOut": {
+        "properties": {
+          "case_id": {
+            "title": "Case Id",
+            "type": "string"
+          },
+          "expected_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Answer"
+          },
+          "expected_chunk_ids": {
+            "default": [],
+            "description": "Chunks a correct answer should have retrieved. Supplying these is what makes retrieval scorable independently of generation, and a regression attributable to a stage.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Expected Chunk Ids",
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "question": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "scores_generation": {
+            "title": "Scores Generation",
+            "type": "boolean"
+          },
+          "scores_retrieval": {
+            "title": "Scores Retrieval",
+            "type": "boolean"
+          },
+          "source_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when promoting a real turn, so datasets stay grounded in answers users actually got wrong.",
+            "title": "Source Turn Id"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question",
+          "case_id",
+          "scores_retrieval",
+          "scores_generation"
+        ],
+        "title": "CaseOut",
+        "type": "object"
+      },
+      "CaseResultOut": {
+        "properties": {
+          "case_id": {
+            "title": "Case Id",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerationScoreOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "retrieval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalScoreOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "case_id",
+          "retrieval",
+          "generation",
+          "latency_ms",
+          "error"
+        ],
+        "title": "CaseResultOut",
+        "type": "object"
+      },
       "ChatRequestIn": {
         "properties": {
           "history": {
@@ -155,6 +354,346 @@
         "title": "CredentialIn",
         "type": "object"
       },
+      "DatasetIn": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "DatasetIn",
+        "type": "object"
+      },
+      "DatasetOut": {
+        "properties": {
+          "case_count": {
+            "title": "Case Count",
+            "type": "integer"
+          },
+          "cases": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CaseOut"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "name",
+          "version",
+          "description",
+          "case_count"
+        ],
+        "title": "DatasetOut",
+        "type": "object"
+      },
+      "EvaluationConfigOut": {
+        "properties": {
+          "candidate_limit": {
+            "title": "Candidate Limit",
+            "type": "integer"
+          },
+          "chat_model": {
+            "title": "Chat Model",
+            "type": "string"
+          },
+          "embedding_dimensions": {
+            "title": "Embedding Dimensions",
+            "type": "integer"
+          },
+          "embedding_model": {
+            "title": "Embedding Model",
+            "type": "string"
+          },
+          "judge_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Model"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "rerank_enabled": {
+            "title": "Rerank Enabled",
+            "type": "boolean"
+          },
+          "rerank_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Model"
+          },
+          "retrieval_limit": {
+            "title": "Retrieval Limit",
+            "type": "integer"
+          },
+          "rrf_k": {
+            "title": "Rrf K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "embedding_model",
+          "embedding_dimensions",
+          "chat_model",
+          "retrieval_limit",
+          "candidate_limit",
+          "rrf_k",
+          "rerank_enabled",
+          "rerank_model",
+          "prompt_version",
+          "judge_model"
+        ],
+        "title": "EvaluationConfigOut",
+        "type": "object"
+      },
+      "EvaluationRunOut": {
+        "properties": {
+          "config": {
+            "$ref": "#/components/schemas/EvaluationConfigOut"
+          },
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "dataset_version": {
+            "title": "Dataset Version",
+            "type": "integer"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "failure_count": {
+            "title": "Failure Count",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "hallucination_count": {
+            "title": "Hallucination Count",
+            "type": "integer"
+          },
+          "mean_faithfulness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Faithfulness"
+          },
+          "mean_mrr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Mrr"
+          },
+          "mean_ndcg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Ndcg"
+          },
+          "mean_recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Recall"
+          },
+          "missed_entirely_count": {
+            "title": "Missed Entirely Count",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/CaseResultOut"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "dataset_id",
+          "dataset_version",
+          "state",
+          "started_at",
+          "finished_at",
+          "duration_seconds",
+          "config",
+          "mean_recall",
+          "mean_mrr",
+          "mean_ndcg",
+          "mean_faithfulness",
+          "hallucination_count",
+          "missed_entirely_count",
+          "failure_count",
+          "error",
+          "results"
+        ],
+        "title": "EvaluationRunOut",
+        "type": "object"
+      },
+      "GenerationScoreOut": {
+        "properties": {
+          "answer_relevance": {
+            "title": "Answer Relevance",
+            "type": "number"
+          },
+          "citation_correctness": {
+            "title": "Citation Correctness",
+            "type": "number"
+          },
+          "faithfulness": {
+            "title": "Faithfulness",
+            "type": "number"
+          },
+          "is_hallucinating": {
+            "description": "Low faithfulness with high relevance: fluent, confident and wrong. Named rather than averaged away because the citations make it look verified.",
+            "title": "Is Hallucinating",
+            "type": "boolean"
+          },
+          "rationale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rationale"
+          }
+        },
+        "required": [
+          "faithfulness",
+          "answer_relevance",
+          "citation_correctness",
+          "rationale",
+          "is_hallucinating"
+        ],
+        "title": "GenerationScoreOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -239,6 +778,83 @@
           "max_output_tokens"
         ],
         "title": "ModelOption",
+        "type": "object"
+      },
+      "RetrievalScoreOut": {
+        "properties": {
+          "expected_count": {
+            "title": "Expected Count",
+            "type": "integer"
+          },
+          "found_nothing": {
+            "title": "Found Nothing",
+            "type": "boolean"
+          },
+          "k": {
+            "title": "K",
+            "type": "integer"
+          },
+          "mrr": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mrr"
+          },
+          "ndcg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ndcg"
+          },
+          "precision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision"
+          },
+          "recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when the case has no ground truth",
+            "title": "Recall"
+          },
+          "retrieved_count": {
+            "title": "Retrieved Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "recall",
+          "precision",
+          "mrr",
+          "ndcg",
+          "k",
+          "retrieved_count",
+          "expected_count",
+          "found_nothing"
+        ],
+        "title": "RetrievalScoreOut",
         "type": "object"
       },
       "RunOut": {
@@ -684,6 +1300,327 @@
         "summary": "Stream Chat",
         "tags": [
           "chat"
+        ]
+      }
+    },
+    "/evals/datasets": {
+      "get": {
+        "description": "Every dataset's latest version, without its cases.",
+        "operationId": "listDatasets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DatasetOut"
+                  },
+                  "title": "Response Listdatasets",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Datasets",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "post": {
+        "operationId": "createDataset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Dataset",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/evals/datasets/{dataset_id}": {
+      "get": {
+        "operationId": "getDataset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Omit for the latest. Pin it to inspect the exact version a historical run scored.",
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Omit for the latest. Pin it to inspect the exact version a historical run scored.",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Dataset",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/evals/datasets/{dataset_id}/cases": {
+      "post": {
+        "description": "Add a case, forking the dataset version.\n\nAdding forks because a run over eleven cases is not comparable to a run over\nten, and sharing a version number between them is how an eval quietly starts\nlying about a trend.",
+        "operationId": "addCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Case",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/evals/datasets/{dataset_id}/runs": {
+      "get": {
+        "description": "Recent runs, newest first, so two configurations can be compared.",
+        "operationId": "listEvaluationRuns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EvaluationRunOut"
+                  },
+                  "title": "Response Listevaluationruns",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "post": {
+        "description": "Start a run against the current configuration and return immediately.\n\nThe configuration is captured from live settings rather than accepted from\nthe client: a run is only comparable to another if it records what actually\nexecuted, and a client-supplied config could claim anything.",
+        "operationId": "startEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Evaluation",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/evals/runs/{run_id}": {
+      "get": {
+        "description": "A run with its per-case results and headline aggregates.",
+        "operationId": "getEvaluationRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationRunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run",
+        "tags": [
+          "evaluation"
         ]
       }
     },

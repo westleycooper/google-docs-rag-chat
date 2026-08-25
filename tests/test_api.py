@@ -14,6 +14,7 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 from tests.fakes import (
+    FakeAnswerJudge,
     FakeChatModel,
     FakeDocumentCatalogue,
     FakeEmbeddingProvider,
@@ -58,6 +59,45 @@ class FakeSourceCatalogue:
 
     async def delete(self, source_id: SourceId) -> None:
         self.items.pop(source_id, None)
+
+
+class FakeEvaluationStore:
+    """In-memory EvaluationStore, keyed by (dataset id, version) as Postgres is."""
+
+    def __init__(self) -> None:
+        self.datasets: dict[tuple[object, int], object] = {}
+        self.runs: dict[object, object] = {}
+
+    async def save_dataset(self, dataset) -> None:
+        self.datasets[(dataset.dataset_id, dataset.version)] = dataset
+
+    async def get_dataset(self, dataset_id, version=None):
+        versions = [v for (d, v) in self.datasets if d == dataset_id]
+        if not versions:
+            raise NotFound("Dataset", dataset_id)
+        chosen = version if version is not None else max(versions)
+        if (dataset_id, chosen) not in self.datasets:
+            raise NotFound("Dataset", dataset_id)
+        return self.datasets[(dataset_id, chosen)]
+
+    async def list_datasets(self):
+        latest: dict[object, object] = {}
+        for (dataset_id, version), dataset in self.datasets.items():
+            current = latest.get(dataset_id)
+            if current is None or version > current.version:
+                latest[dataset_id] = dataset
+        return list(latest.values())
+
+    async def save_run(self, run) -> None:
+        self.runs[run.run_id] = run
+
+    async def get_run(self, run_id):
+        if run_id not in self.runs:
+            raise NotFound("EvaluationRun", run_id)
+        return self.runs[run_id]
+
+    async def list_runs(self, dataset_id, limit=20):
+        return [r for r in self.runs.values() if r.dataset_id == dataset_id][:limit]
 
 
 class FakeEngine:
@@ -130,6 +170,8 @@ def client(request):
         journal=FakeRunJournal(),
         credentials=None,
         reranker=FakeReranker(),
+        evaluations=FakeEvaluationStore(),  # type: ignore[arg-type]
+        judge=FakeAnswerJudge(),  # type: ignore[arg-type]
     )
     with TestClient(create_app(container)) as test_client:
         yield test_client
@@ -359,3 +401,155 @@ def test_operation_ids_are_unique(client):
     spec = client.get("/openapi.json").json()
     ids = [op["operationId"] for operations in spec["paths"].values() for op in operations.values()]
     assert len(ids) == len(set(ids))
+
+
+# -- evaluation (ADR-0010) ------------------------------------------------
+
+
+def make_dataset(client, name="Regression set"):
+    return client.post("/evals/datasets", json={"name": name}).json()
+
+
+def test_creating_a_dataset_returns_201(client):
+    response = client.post("/evals/datasets", json={"name": "Regression set"})
+    assert response.status_code == 201
+    assert response.json()["version"] == 1
+    assert response.json()["case_count"] == 0
+
+
+def test_a_blank_dataset_name_is_rejected(client):
+    assert client.post("/evals/datasets", json={"name": "  "}).status_code == 422
+
+
+def test_datasets_are_listed_without_their_cases(client):
+    created = make_dataset(client)
+    client.post(
+        f"/evals/datasets/{created['dataset_id']}/cases",
+        json={"question": "What happened to revenue?"},
+    )
+    listed = client.get("/evals/datasets").json()
+    assert listed[0]["case_count"] == 0 or listed[0]["cases"] == []
+
+
+def test_adding_a_case_forks_the_version(client):
+    """A run over eleven cases is not comparable to a run over ten."""
+    created = make_dataset(client)
+    response = client.post(
+        f"/evals/datasets/{created['dataset_id']}/cases",
+        json={"question": "What happened to revenue?"},
+    )
+    assert response.status_code == 201
+    assert response.json()["version"] == created["version"] + 1
+    assert response.json()["case_count"] == 1
+
+
+def test_a_case_reports_what_it_can_score(client):
+    created = make_dataset(client)
+    body = client.post(
+        f"/evals/datasets/{created['dataset_id']}/cases",
+        json={
+            "question": "What happened to revenue?",
+            "expected_answer": "It rose twelve percent.",
+            "expected_chunk_ids": [str(ChunkId.new())],
+        },
+    ).json()
+    case = body["cases"][0]
+    assert case["scores_retrieval"]
+    assert case["scores_generation"]
+
+
+def test_a_promoted_case_records_its_origin(client):
+    """Datasets grounded in real failures, not invented questions."""
+    created = make_dataset(client)
+    body = client.post(
+        f"/evals/datasets/{created['dataset_id']}/cases",
+        json={"question": "revenue?", "source_turn_id": "turn-42"},
+    ).json()
+    assert body["cases"][0]["source_turn_id"] == "turn-42"
+
+
+def test_a_blank_question_is_rejected(client):
+    created = make_dataset(client)
+    response = client.post(
+        f"/evals/datasets/{created['dataset_id']}/cases", json={"question": "   "}
+    )
+    assert response.status_code == 422
+
+
+def test_a_malformed_chunk_id_is_422_not_500(client):
+    created = make_dataset(client)
+    response = client.post(
+        f"/evals/datasets/{created['dataset_id']}/cases",
+        json={"question": "q?", "expected_chunk_ids": ["not-a-uuid"]},
+    )
+    assert response.status_code == 422
+
+
+def test_an_unknown_dataset_is_404(client):
+    from ragoogle_core.shared.identifiers import DatasetId
+
+    assert client.get(f"/evals/datasets/{DatasetId.new()}").status_code == 404
+
+
+def test_a_malformed_dataset_id_is_422(client):
+    assert client.get("/evals/datasets/not-a-uuid").status_code == 422
+
+
+def test_a_specific_version_can_be_pinned(client):
+    """So a historical run's exact questions can be inspected."""
+    created = make_dataset(client)
+    client.post(f"/evals/datasets/{created['dataset_id']}/cases", json={"question": "first?"})
+    v1 = client.get(f"/evals/datasets/{created['dataset_id']}?version=1").json()
+    v2 = client.get(f"/evals/datasets/{created['dataset_id']}").json()
+    assert v1["case_count"] == 0
+    assert v2["case_count"] == 1
+
+
+def test_starting_a_run_on_an_empty_dataset_is_rejected(client):
+    """A run over zero cases reports a perfect score for a system nobody tested."""
+    created = make_dataset(client)
+    response = client.post(f"/evals/datasets/{created['dataset_id']}/runs")
+    assert response.status_code == 422
+    assert "empty dataset" in response.json()["detail"]
+
+
+def test_starting_a_run_returns_202_with_the_live_configuration(client):
+    """A client-supplied config could claim anything; this records what ran."""
+    created = make_dataset(client)
+    client.post(
+        f"/evals/datasets/{created['dataset_id']}/cases",
+        json={"question": "What happened to revenue?"},
+    )
+    response = client.post(f"/evals/datasets/{created['dataset_id']}/runs")
+    assert response.status_code == 202
+    body = response.json()
+    assert body["state"] == "running"
+    assert body["config"]["rrf_k"] == 60
+    assert body["config"]["embedding_model"]
+
+
+def test_a_started_run_can_be_fetched_back(client):
+    created = make_dataset(client)
+    client.post(f"/evals/datasets/{created['dataset_id']}/cases", json={"question": "revenue?"})
+    started = client.post(f"/evals/datasets/{created['dataset_id']}/runs").json()
+    fetched = client.get(f"/evals/runs/{started['run_id']}").json()
+    assert fetched["run_id"] == started["run_id"]
+    assert fetched["dataset_version"] == started["dataset_version"]
+
+
+def test_an_unknown_run_is_404(client):
+    from ragoogle_core.shared.identifiers import RunId
+
+    assert client.get(f"/evals/runs/{RunId.new()}").status_code == 404
+
+
+def test_a_malformed_run_id_is_422(client):
+    assert client.get("/evals/runs/not-a-uuid").status_code == 422
+
+
+def test_runs_can_be_listed_for_a_dataset(client):
+    created = make_dataset(client)
+    client.post(f"/evals/datasets/{created['dataset_id']}/cases", json={"question": "revenue?"})
+    client.post(f"/evals/datasets/{created['dataset_id']}/runs")
+    listed = client.get(f"/evals/datasets/{created['dataset_id']}/runs").json()
+    assert len(listed) >= 1
