@@ -1,0 +1,15 @@
+"""Application layer: use cases orchestrating domain objects over ports.
+
+Imports domain and ports, never an adapter and never a vendor SDK (ADR-0001).
+LangGraph composes these use cases into a graph from `ragoogle_infra`; the use
+cases themselves know nothing about it, which is what lets them be tested against
+the fakes in `tests/fakes.py` with no network and no database.
+"""
+
+from ragoogle_core.application.retrieval import (
+    RetrievalRequest,
+    RetrievalResult,
+    RetrieveContext,
+)
+
+__all__ = ["RetrievalRequest", "RetrievalResult", "RetrieveContext"]
