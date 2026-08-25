@@ -1,0 +1,29 @@
+# Copying a locally-installed node_modules or .venv into an image is slow and
+# wrong: the host's platform binaries are not the image's, and it overwrites the
+# install the build just did.
+**/node_modules
+**/.venv
+**/dist
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/coverage
+**/htmlcov
+**/.coverage
+
+.git
+.github
+.claude
+**/.env
+**/.env.*
+!**/.env.example
+
+# Terraform state can contain secrets and is never needed in an image.
+infra/**/.terraform
+infra/**/*.tfstate*
+
+docs/screenshots
+**/*.md
+!README.md
