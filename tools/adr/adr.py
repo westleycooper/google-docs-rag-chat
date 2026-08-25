@@ -230,6 +230,28 @@ def build_index() -> dict[str, Any]:
             }
         )
 
+    # Cross-reference integrity: an ADR arguing from another ADR must not link
+    # into the void. Dangling links are how a decision log rots quietly.
+    known = {Path(r["path"]).name for r in records}
+    for path in adr_files():
+        text = path.read_text(encoding="utf-8")
+        for target in re.findall(r"\]\((\d{4}-[a-z0-9-]+\.md)\)", text):
+            if target not in known:
+                errors.append(f"{path.name}: dangling ADR link -> {target}")
+
+    # Reciprocity: if A supersedes B, B must record that it is superseded by A.
+    by_id = {r["id"]: r for r in records}
+    for r in records:
+        for ref in r["supersedes"]:
+            target = by_id.get(int(ref.split("-")[1]))
+            if target is None:
+                errors.append(f"{r['ref']}: supersedes unknown {ref}")
+            elif r["ref"] not in target["supersededBy"]:
+                errors.append(
+                    f"{target['ref']}: must declare superseded_by: [{r['id']}] "
+                    f"(claimed by {r['ref']})"
+                )
+
     records.sort(key=lambda r: r["id"])
     by_component: dict[str, int] = {}
     for r in records:

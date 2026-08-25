@@ -43,6 +43,13 @@ and validated by `tools/adr/adr.py`. A `PostToolUse` hook regenerates
 `docs/adr/index.json` whenever an ADR file changes, so the machine-readable index
 cannot drift from the prose.
 
+Validation is not merely schema-shaped. The tool also enforces two relational
+rules, because a decision log rots through its links long before it rots through
+its fields: a markdown link to another ADR must resolve to a file that exists,
+and if A declares it supersedes B, then B must declare it is superseded by A.
+Both are reported as errors that block the index, so a broken cross-reference
+fails at authoring time rather than being discovered by a reader who needed it.
+
 **ADRs surfaced to observability.** Every ADR carries a `component` in its
 frontmatter drawn from a fixed vocabulary that matches the node names in the
 observability topology graph. The Three.js application reads `index.json` and

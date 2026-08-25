@@ -2,17 +2,18 @@
   "schemaVersion": 1,
   "generator": "tools/adr/adr.py",
   "generatedFrom": "docs/adr/*.md",
-  "count": 6,
+  "count": 10,
   "byComponent": {
     "platform": 1,
-    "rag-core": 2,
+    "rag-core": 4,
     "ingestion": 1,
     "infra": 1,
-    "tooling": 1
+    "tooling": 1,
+    "frontend": 2
   },
   "byStatus": {
     "proposed": 0,
-    "accepted": 6,
+    "accepted": 10,
     "rejected": 0,
     "deprecated": 0,
     "superseded": 0
@@ -143,6 +144,91 @@
       "supersededBy": [],
       "summary": "We will treat both as automation rather than discipline.",
       "path": "docs/adr/0006-auto-commit-and-adr-as-code.md"
+    },
+    {
+      "id": 7,
+      "ref": "ADR-0007",
+      "title": "Server-authoritative session context, Redux-cached and hydrated at chat inception",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "frontend",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "redux",
+        "session",
+        "context",
+        "state-management"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will keep the **server authoritative** for session context and use Redux as a **hydrated projection** of it.",
+      "path": "docs/adr/0007-client-cached-session-context-hydrated-at-inception.md"
+    },
+    {
+      "id": 8,
+      "ref": "ADR-0008",
+      "title": "Visualise the context budget in Three.js with user-directed truncation",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "frontend",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "threejs",
+        "ux",
+        "context-window",
+        "tokens"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will render the context budget as a **segmented volumetric meter** in Three.js, sharing a WebGL context with the retrieval trace (see [ADR-0009](0009-stream-and-visualise-the-retrieval-reasoning-trace.md)) and reading from the Redux projection (see [ADR-0007](0007-client-cached-session-context-hydrated-at-inception.md)).",
+      "path": "docs/adr/0008-threejs-context-budget-with-user-directed-truncation.md"
+    },
+    {
+      "id": 9,
+      "ref": "ADR-0009",
+      "title": "Stream the LangGraph retrieval and reasoning trace to a visualised timeline",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "rag-core",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "langgraph",
+        "streaming",
+        "observability",
+        "ux",
+        "citations"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will stream each LangGraph node transition to the client over SSE and render it as a **live trace timeline**, escalating to the shared Three.js canvas only when the graph actually branches.",
+      "path": "docs/adr/0009-stream-and-visualise-the-retrieval-reasoning-trace.md"
+    },
+    {
+      "id": 10,
+      "ref": "ADR-0010",
+      "title": "Evaluation as a first-class bounded context, configurable from the UI",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "rag-core",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "evals",
+        "quality",
+        "langgraph",
+        "regression"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will model **Evaluation as its own bounded context** with `Dataset`, `Case`, `Run`, and `Score` as aggregates, exposed through the configuration UI.",
+      "path": "docs/adr/0010-evaluation-as-a-first-class-bounded-context.md"
     }
   ],
   "errors": []
