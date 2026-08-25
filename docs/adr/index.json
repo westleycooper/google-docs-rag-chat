@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "generator": "tools/adr/adr.py",
   "generatedFrom": "docs/adr/*.md",
-  "count": 12,
+  "count": 13,
   "byComponent": {
     "platform": 1,
-    "rag-core": 4,
+    "rag-core": 5,
     "ingestion": 1,
     "infra": 1,
     "tooling": 1,
@@ -14,7 +14,7 @@
   },
   "byStatus": {
     "proposed": 0,
-    "accepted": 12,
+    "accepted": 13,
     "rejected": 0,
     "deprecated": 0,
     "superseded": 0
@@ -272,6 +272,27 @@
       "supersededBy": [],
       "summary": "We will use `ts_rank_cd(search_vector, query, 32)` for lexical ranking, and treat ADR-0004's \"BM25\" as shorthand for \"lexical relevance ranking\" rather than a literal algorithm commitment.",
       "path": "docs/adr/0012-ts-rank-cd-rather-than-true-bm25.md"
+    },
+    {
+      "id": 13,
+      "ref": "ADR-0013",
+      "title": "Voyage rerank-2.5 as the default cross-encoder, with a self-hosted escape hatch",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "rag-core",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "rerank",
+        "latency",
+        "vendor",
+        "confidentiality"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will use **Voyage `rerank-2.5`** by default, behind the existing `Reranker` port, and treat a self-hosted adapter as a supported configuration rather than a hypothetical one.",
+      "path": "docs/adr/0013-hosted-reranker-with-a-self-hosted-escape-hatch.md"
     }
   ],
   "errors": []
