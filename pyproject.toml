@@ -59,4 +59,11 @@ source = ["ragoogle_core", "ragoogle_infra", "ragoogle_api"]
 branch = true
 
 [tool.coverage.report]
-exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    # A Protocol method body is a declaration, not logic. There is nothing to
+    # execute and nothing a test could assert about it.
+    "^\\s*\\.\\.\\.$",
+]

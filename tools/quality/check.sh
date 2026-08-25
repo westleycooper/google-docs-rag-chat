@@ -19,7 +19,8 @@ run "Layering"       python3 tools/quality/layering.py
 run "Ruff lint"      "${UVR[@]}" --with ruff ruff check packages/ apps/ tools/ tests/
 run "Ruff format"    "${UVR[@]}" --with ruff ruff format --check packages/ apps/ tools/ tests/
 run "Mypy strict"    "${UVR[@]}" --with mypy mypy --strict packages/ragoogle-core/src/ragoogle_core
-run "Tests + cover"  "${UVR[@]}" --with pytest --with pytest-cov python -m pytest tests/ -q \
+run "Tests + cover"  "${UVR[@]}" --with pytest --with pytest-asyncio --with pytest-cov \
+                        python -m pytest tests/ -q \
                         --cov=ragoogle_core --cov-report=term-missing --cov-fail-under=100
 
 printf '\n'
