@@ -2,18 +2,19 @@
   "schemaVersion": 1,
   "generator": "tools/adr/adr.py",
   "generatedFrom": "docs/adr/*.md",
-  "count": 10,
+  "count": 11,
   "byComponent": {
     "platform": 1,
     "rag-core": 4,
     "ingestion": 1,
     "infra": 1,
     "tooling": 1,
-    "frontend": 2
+    "frontend": 2,
+    "vectorstore": 1
   },
   "byStatus": {
     "proposed": 0,
-    "accepted": 10,
+    "accepted": 11,
     "rejected": 0,
     "deprecated": 0,
     "superseded": 0
@@ -229,6 +230,27 @@
       "supersededBy": [],
       "summary": "We will model **Evaluation as its own bounded context** with `Dataset`, `Case`, `Run`, and `Score` as aggregates, exposed through the configuration UI.",
       "path": "docs/adr/0010-evaluation-as-a-first-class-bounded-context.md"
+    },
+    {
+      "id": 11,
+      "ref": "ADR-0011",
+      "title": "HNSW over IVFFlat, and a trigger-maintained tsvector",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "vectorstore",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "pgvector",
+        "indexing",
+        "postgres",
+        "recall"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "**HNSW, with `vector_cosine_ops`, `m = 16`, `ef_construction = 64`.**",
+      "path": "docs/adr/0011-hnsw-and-trigger-maintained-tsvector.md"
     }
   ],
   "errors": []

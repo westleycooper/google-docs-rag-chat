@@ -53,6 +53,9 @@ mypy_path = "packages/ragoogle-core/src:packages/ragoogle-infra/src:apps/api/src
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
 asyncio_mode = "auto"
+markers = [
+    "integration: needs a live Postgres with pgvector (RAGOOGLE_TEST_DATABASE_URL)",
+]
 
 [tool.coverage.run]
 source = ["ragoogle_core", "ragoogle_infra", "ragoogle_api"]

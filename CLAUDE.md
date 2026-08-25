@@ -21,6 +21,20 @@ layer, the design is wrong, not the rule.
 ADR index freshness · layering · ruff lint · ruff format · mypy --strict ·
 pytest at **100% branch coverage** (`--cov-fail-under=100`, not a target).
 
+Integration tests need a live Postgres and skip without one:
+
+```bash
+docker compose up -d postgres
+export RAGOOGLE_TEST_DATABASE_URL=postgresql://ragoogle:ragoogle@localhost:5433/ragoogle
+uv run --python 3.12 --no-project --with alembic --with "psycopg[binary]" \
+  --with pgvector --with sqlalchemy alembic upgrade head
+./tools/quality/check.sh
+```
+
+They verify what no fake can: the HNSW index is cosine, the tsvector trigger
+fires without the application, CHECK constraints reject bad rows, and cascades
+reach chunks. Postgres runs on **5433** to avoid colliding with a local install.
+
 `tools/quality/layering.py` walks the AST of `ragoogle-core` and fails on any
 non-stdlib import, naming the port the SDK belongs behind. A `PostToolUse` hook
 runs it on every edit under `packages/ragoogle-core/`, so a violation blocks at
