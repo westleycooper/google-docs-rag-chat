@@ -1,0 +1,26 @@
+[project]
+name = "ragoogle-api"
+version = "0.1.0"
+description = "Ragoogle FastAPI composition root and HTTP adapters"
+requires-python = ">=3.12"
+dependencies = [
+    "ragoogle-core",
+    "ragoogle-infra",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "sse-starlette>=2.2",
+    "opentelemetry-instrumentation-fastapi>=0.50b0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ragoogle_api"]
+
+[tool.uv.sources]
+ragoogle-core = { workspace = true }
+ragoogle-infra = { workspace = true }

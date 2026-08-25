@@ -12,6 +12,24 @@ standard library, the application layer imports domain and ports, and **only
 adapters may import a vendor SDK**. If you need a vendor SDK in the domain
 layer, the design is wrong, not the rule.
 
+## Quality gates
+
+```bash
+./tools/quality/check.sh   # every gate, in the order CI runs them
+```
+
+ADR index freshness · layering · ruff lint · ruff format · mypy --strict ·
+pytest at **100% branch coverage** (`--cov-fail-under=100`, not a target).
+
+`tools/quality/layering.py` walks the AST of `ragoogle-core` and fails on any
+non-stdlib import, naming the port the SDK belongs behind. A `PostToolUse` hook
+runs it on every edit under `packages/ragoogle-core/`, so a violation blocks at
+authoring time rather than in CI.
+
+Python is **3.12** (`.python-version`), managed by uv. `uv sync` for the full
+workspace; the gates run on ephemeral `uv run --no-project` envs so they work on
+a clean checkout.
+
 ## Decision records
 
 All architectural decisions live in `docs/adr/` in MADR format.

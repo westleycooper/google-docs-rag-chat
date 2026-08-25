@@ -1,0 +1,32 @@
+[project]
+name = "ragoogle-infra"
+version = "0.1.0"
+description = "Ragoogle adapters. The only layer permitted to import a vendor SDK."
+requires-python = ">=3.12"
+dependencies = [
+    "ragoogle-core",
+    "sqlalchemy>=2.0.36",
+    "asyncpg>=0.30",
+    "pgvector>=0.3.6",
+    "alembic>=1.14",
+    "anthropic>=0.42",
+    "voyageai>=0.3.2",
+    "google-api-python-client>=2.159",
+    "google-auth>=2.37",
+    "google-auth-oauthlib>=1.2",
+    "langgraph>=0.2.60",
+    "opentelemetry-api>=1.29",
+    "opentelemetry-sdk>=1.29",
+    "opentelemetry-exporter-otlp>=1.29",
+    "cryptography>=44.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ragoogle_infra"]
+
+[tool.uv.sources]
+ragoogle-core = { workspace = true }

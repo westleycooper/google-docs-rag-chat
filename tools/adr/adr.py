@@ -10,12 +10,12 @@ Usage:
     adr.py index [--check]
     adr.py list
 """
+
 from __future__ import annotations
 
 import argparse
 import datetime as dt
 import json
-import os
 import re
 import subprocess
 import sys
@@ -221,7 +221,9 @@ def build_index() -> dict[str, Any]:
                 "component": fm["component"],
                 "deciders": fm.get("deciders", []),
                 "tags": fm.get("tags", []),
-                "supersedes": [f"ADR-{int(x):04d}" for x in fm.get("supersedes", []) if str(x).strip()],
+                "supersedes": [
+                    f"ADR-{int(x):04d}" for x in fm.get("supersedes", []) if str(x).strip()
+                ],
                 "supersededBy": [
                     f"ADR-{int(x):04d}" for x in fm.get("superseded_by", []) if str(x).strip()
                 ],
@@ -277,7 +279,10 @@ def cmd_index(args: argparse.Namespace) -> int:
     if args.check:
         current = INDEX_PATH.read_text(encoding="utf-8") if INDEX_PATH.exists() else ""
         if current != payload:
-            print("docs/adr/index.json is stale -- run: python3 tools/adr/adr.py index", file=sys.stderr)
+            print(
+                "docs/adr/index.json is stale -- run: python3 tools/adr/adr.py index",
+                file=sys.stderr,
+            )
             return 1
         if index["errors"]:
             for err in index["errors"]:
@@ -297,11 +302,13 @@ def cmd_index(args: argparse.Namespace) -> int:
 def cmd_list(args: argparse.Namespace) -> int:
     index = build_index()
     if not index["records"]:
-        print("no ADRs yet -- create one with: python3 tools/adr/adr.py new \"Title\"")
+        print('no ADRs yet -- create one with: python3 tools/adr/adr.py new "Title"')
         return 0
     width = max(len(r["title"]) for r in index["records"])
     for r in index["records"]:
-        print(f"{r['ref']}  {r['status']:<11} {r['component']:<14} {r['title']:<{width}}  {r['date']}")
+        print(
+            f"{r['ref']}  {r['status']:<11} {r['component']:<14} {r['title']:<{width}}  {r['date']}"
+        )
     return 0
 
 

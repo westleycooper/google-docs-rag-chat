@@ -1,0 +1,62 @@
+[project]
+name = "ragoogle"
+version = "0.1.0"
+description = "RAG chat platform over Google Drive and other document sources"
+requires-python = ">=3.12"
+dependencies = [
+    "ragoogle-core",
+    "ragoogle-infra",
+]
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/api"]
+
+[tool.uv.sources]
+ragoogle-core = { workspace = true }
+ragoogle-infra = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "pytest-asyncio>=0.25",
+    "hypothesis>=6.122",
+    "ruff>=0.9",
+    "mypy>=1.14",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["packages/ragoogle-core/src", "packages/ragoogle-infra/src", "apps/api/src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "SIM", "RUF", "ANN", "PT"]
+ignore = ["ANN401"]
+# "›" is the breadcrumb separator in Chunk.citation_label, not a mistyped ">".
+allowed-confusables = ["\u203a"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]
+# N818 wants an "Error" suffix on every exception. These two are deliberate
+# domain vocabulary -- "raise NotFound(...)" reads as the domain speaks, and the
+# base class DomainError already carries the suffix where it aids recognition.
+"packages/ragoogle-core/src/ragoogle_core/shared/errors.py" = ["N818"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+mypy_path = "packages/ragoogle-core/src:packages/ragoogle-infra/src:apps/api/src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["ragoogle_core", "ragoogle_infra", "ragoogle_api"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
