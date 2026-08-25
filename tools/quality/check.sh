@@ -21,11 +21,14 @@ TARGETS=(packages/ apps/ tools/ tests/)
 
 run "ADR index"      uv run python tools/adr/adr.py index --check
 run "Layering"       uv run python tools/quality/layering.py
+run "OpenAPI"        uv run python tools/openapi/export.py --check
 run "Ruff lint"      uv run ruff check "${TARGETS[@]}"
 run "Ruff format"    uv run ruff format --check "${TARGETS[@]}"
 run "Mypy strict"    uv run mypy --strict packages/ragoogle-core/src/ragoogle_core
 run "Mypy adapters"  uv run mypy --strict --ignore-missing-imports \
                        packages/ragoogle-infra/src/ragoogle_infra
+run "Mypy api"       uv run mypy --strict --ignore-missing-imports \
+                       apps/api/src/ragoogle_api
 run "Tests + cover"  uv run pytest tests/ -q --ignore=tests/integration \
                        --cov=ragoogle_core --cov-report=term-missing --cov-fail-under=100
 

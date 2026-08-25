@@ -1,0 +1,1068 @@
+{
+  "components": {
+    "schemas": {
+      "ChatRequestIn": {
+        "properties": {
+          "history": {
+            "default": [],
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "question": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "source_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ids"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "ChatRequestIn",
+        "type": "object"
+      },
+      "ComponentNode": {
+        "description": "One node in the observability topology graph (ADR-0006).",
+        "properties": {
+          "adr_refs": {
+            "default": [],
+            "description": "ADRs whose `component` field maps to this node, so a decision can be rendered against the thing it constrains.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Adr Refs",
+            "type": "array"
+          },
+          "depends_on": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Depends On",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "service",
+              "datastore",
+              "external",
+              "frontend"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded",
+              "down",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "kind",
+          "status"
+        ],
+        "title": "ComponentNode",
+        "type": "object"
+      },
+      "CredentialIn": {
+        "description": "A source's credential. Write-only -- there is no read endpoint.",
+        "properties": {
+          "secret": {
+            "description": "Service-account JSON key, or a JSON object with refresh_token, client_id and client_secret for OAuth.",
+            "minLength": 1,
+            "title": "Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "secret"
+        ],
+        "title": "CredentialIn",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthStatus": {
+        "description": "Liveness and dependency state, polled by the observability app.",
+        "example": {
+          "checks": {
+            "database": "ok"
+          },
+          "status": "ok",
+          "version": "0.1.0"
+        },
+        "properties": {
+          "checks": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Per-dependency state. A dependency that is down degrades the node rather than failing it, so the topology can show partial availability instead of a binary light.",
+            "title": "Checks",
+            "type": "object"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "degraded",
+              "down"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "checks",
+          "latency_ms"
+        ],
+        "title": "HealthStatus",
+        "type": "object"
+      },
+      "ModelOption": {
+        "properties": {
+          "context_window": {
+            "title": "Context Window",
+            "type": "integer"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "max_output_tokens": {
+            "title": "Max Output Tokens",
+            "type": "integer"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "display_name",
+          "context_window",
+          "max_output_tokens"
+        ],
+        "title": "ModelOption",
+        "type": "object"
+      },
+      "RunOut": {
+        "properties": {
+          "discovered": {
+            "title": "Discovered",
+            "type": "integer"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "ingested": {
+            "title": "Ingested",
+            "type": "integer"
+          },
+          "reconciled": {
+            "title": "Reconciled",
+            "type": "boolean"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "skips": {
+            "items": {
+              "$ref": "#/components/schemas/SkipOut"
+            },
+            "title": "Skips",
+            "type": "array"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "unchanged": {
+            "title": "Unchanged",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_id",
+          "source_id",
+          "state",
+          "started_at",
+          "finished_at",
+          "duration_seconds",
+          "discovered",
+          "ingested",
+          "unchanged",
+          "skipped",
+          "failed",
+          "reconciled",
+          "error",
+          "skips"
+        ],
+        "title": "RunOut",
+        "type": "object"
+      },
+      "SkipOut": {
+        "properties": {
+          "actionable": {
+            "title": "Actionable",
+            "type": "boolean"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "external_id": {
+            "title": "External Id",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "principal": {
+            "title": "Principal",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "external_id",
+          "reason",
+          "principal",
+          "location",
+          "detail",
+          "occurred_at",
+          "actionable"
+        ],
+        "title": "SkipOut",
+        "type": "object"
+      },
+      "SourceIn": {
+        "properties": {
+          "auth_mode": {
+            "enum": [
+              "service_account",
+              "oauth"
+            ],
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "credential_ref": {
+            "description": "Reference into the KMS-backed credential store. Never the credential itself.",
+            "minLength": 1,
+            "title": "Credential Ref",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "exclude_mime_types": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Exclude Mime Types",
+            "type": "array"
+          },
+          "include_mime_types": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Include Mime Types",
+            "type": "array"
+          },
+          "max_document_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Document Bytes"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "principal": {
+            "description": "The effective identity ingestion acts as. Defines the corpus boundary and appears on every skip record.",
+            "minLength": 1,
+            "title": "Principal",
+            "type": "string"
+          },
+          "provider": {
+            "default": "google_drive",
+            "title": "Provider",
+            "type": "string"
+          },
+          "root_folder_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Root Folder Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "auth_mode",
+          "principal",
+          "credential_ref"
+        ],
+        "title": "SourceIn",
+        "type": "object"
+      },
+      "SourceOut": {
+        "properties": {
+          "auth_mode": {
+            "enum": [
+              "service_account",
+              "oauth"
+            ],
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "credential_ref": {
+            "description": "Reference into the KMS-backed credential store. Never the credential itself.",
+            "minLength": 1,
+            "title": "Credential Ref",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "exclude_mime_types": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Exclude Mime Types",
+            "type": "array"
+          },
+          "include_mime_types": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Include Mime Types",
+            "type": "array"
+          },
+          "max_document_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Document Bytes"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "principal": {
+            "description": "The effective identity ingestion acts as. Defines the corpus boundary and appears on every skip record.",
+            "minLength": 1,
+            "title": "Principal",
+            "type": "string"
+          },
+          "provider": {
+            "default": "google_drive",
+            "title": "Provider",
+            "type": "string"
+          },
+          "root_folder_ids": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Root Folder Ids",
+            "type": "array"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "auth_mode",
+          "principal",
+          "credential_ref",
+          "source_id"
+        ],
+        "title": "SourceOut",
+        "type": "object"
+      },
+      "TopologyResponse": {
+        "properties": {
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodes",
+          "generated_at"
+        ],
+        "title": "TopologyResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "\nRAG chat over Google Drive and other document sources.\n\n**Retrieval** is hybrid: dense pgvector search and Postgres full-text search are\nfused with Reciprocal Rank Fusion, then reranked (ADR-0004). Every turn streams\nits retrieval trace so a wrong answer can be diagnosed rather than merely\nnoticed (ADR-0009).\n\n**Permissions** are respected during ingestion. A folder that cannot be read is\nskipped *with an audit record* and never fails the run, because a silent skip is\nindistinguishable from an empty folder (ADR-0003).\n",
+    "title": "Ragoogle API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/chat": {
+      "post": {
+        "description": "Answer a question over the corpus, streaming the reasoning as it happens.",
+        "operationId": "streamChat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "An SSE stream. Frame names: `trace` (a retrieval stage finished), `citations` (the sources, sent before the prose that references them), `delta` (answer text), `finished` (the context budget and any degradation), `error`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Chat",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Liveness plus dependency state.\n\nA failing dependency degrades rather than fails: the topology should be able\nto show partial availability, and a binary light cannot distinguish \"the API\nis down\" from \"the API is up but cannot reach Postgres\".",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "observability"
+        ]
+      }
+    },
+    "/live": {
+      "get": {
+        "description": "Process liveness only -- deliberately touches no dependency.\n\nKubernetes and Container Apps restart a pod that fails this. Checking\nPostgres here would restart a healthy API during a database blip, turning a\npartial outage into a total one.",
+        "operationId": "getLiveness",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness",
+        "tags": [
+          "observability"
+        ]
+      }
+    },
+    "/models": {
+      "get": {
+        "description": "Selectable Claude models, with context windows read live.\n\nThe window matters beyond display: the context meter (ADR-0008) is computed\nagainst it, so a stale hard-coded value would make the meter confidently\nwrong.",
+        "operationId": "listModels",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ModelOption"
+                  },
+                  "title": "Response Listmodels",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Models",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/sources": {
+      "get": {
+        "description": "Every registered source, enabled or not.",
+        "operationId": "listSources",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SourceOut"
+                  },
+                  "title": "Response Listsources",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Sources",
+        "tags": [
+          "sources"
+        ]
+      },
+      "post": {
+        "description": "Register a source.\n\n`credential_ref` points into the KMS-backed store; credential material never\nreaches this endpoint, so a request body in a log is not a disclosure.",
+        "operationId": "createSource",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Source",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/sources/{source_id}": {
+      "delete": {
+        "description": "Remove a source and, by cascade, its documents and chunks.",
+        "operationId": "deleteSource",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Source",
+        "tags": [
+          "sources"
+        ]
+      },
+      "get": {
+        "operationId": "getSource",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Source",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/sources/{source_id}/credential": {
+      "put": {
+        "description": "Store a source's credential, encrypted at rest.\n\nWrite-only by design. There is no GET: a credential that can be read back\nover HTTP is a credential one misconfigured permission away from disclosure,\nand nothing in the product needs to display it.",
+        "operationId": "setSourceCredential",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Credential",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/sources/{source_id}/ingest": {
+      "post": {
+        "description": "Start a run and return immediately.\n\nRuns take minutes to hours, so the request returns the run record and the\nclient polls `/runs/latest`. Holding the connection open for the duration\nwould fail behind any load balancer with an idle timeout.",
+        "operationId": "startIngestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incremental",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Incremental",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Ingestion",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/sources/{source_id}/runs/latest": {
+      "get": {
+        "description": "The most recent run, including everything it could not read.\n\nThe skip list is the point (ADR-0003): a user needs to see what was excluded\nand why, because a silent skip is indistinguishable from an empty folder.",
+        "operationId": "getLatestRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/RunOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Getlatestrun"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Latest Run",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/topology": {
+      "get": {
+        "description": "The architecture graph, with live state and the ADRs constraining each node.",
+        "operationId": "getTopology",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Topology",
+        "tags": [
+          "observability"
+        ]
+      }
+    }
+  }
+}

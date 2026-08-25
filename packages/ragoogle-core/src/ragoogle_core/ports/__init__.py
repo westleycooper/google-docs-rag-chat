@@ -11,6 +11,7 @@ adapter into a thread pool to avoid blocking the event loop.
 """
 
 from ragoogle_core.ports.chat_model import ChatModel, ModelReply, ModelSpec
+from ragoogle_core.ports.credentials import CredentialStore
 from ragoogle_core.ports.document_source import (
     DocumentSource,
     SourceDocument,
@@ -28,6 +29,7 @@ from ragoogle_core.ports.vector_store import SearchHit, VectorStore
 
 __all__ = [
     "ChatModel",
+    "CredentialStore",
     "DocumentCatalogue",
     "DocumentSource",
     "EmbeddingProvider",
