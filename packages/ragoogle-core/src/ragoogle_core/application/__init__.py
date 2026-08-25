@@ -6,6 +6,15 @@ cases themselves know nothing about it, which is what lets them be tested agains
 the fakes in `tests/fakes.py` with no network and no database.
 """
 
+from ragoogle_core.application.chat import (
+    AnswerQuestion,
+    ChatEvent,
+    ChatRequest,
+    CitationsAttached,
+    TextDelta,
+    TraceEmitted,
+    TurnFinished,
+)
 from ragoogle_core.application.ingestion import IngestRequest, IngestSource
 from ragoogle_core.application.retrieval import (
     RetrievalRequest,
@@ -15,10 +24,17 @@ from ragoogle_core.application.retrieval import (
 from ragoogle_core.application.segmentation import segment
 
 __all__ = [
+    "AnswerQuestion",
+    "ChatEvent",
+    "ChatRequest",
+    "CitationsAttached",
     "IngestRequest",
     "IngestSource",
     "RetrievalRequest",
     "RetrievalResult",
     "RetrieveContext",
+    "TextDelta",
+    "TraceEmitted",
+    "TurnFinished",
     "segment",
 ]
