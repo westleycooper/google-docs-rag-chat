@@ -32,6 +32,8 @@ run "Mypy api"       uv run mypy --strict --ignore-missing-imports \
 run "Tests + cover"  uv run pytest tests/ -q --ignore=tests/integration \
                        --cov=ragoogle_core --cov-report=term-missing --cov-fail-under=100
 
+run "Terraform"      ./tools/quality/terraform.sh
+
 # ── frontend ────────────────────────────────────────────────────────────
 # Skipped when dependencies are absent, so the Python gates still run on a
 # checkout where nobody has touched the frontend.

@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars and fill in. Never commit terraform.tfvars.
+api_image           = "ghcr.io/westleycooper/ragoogle-api:0.1.0"
+frontend_image      = "ghcr.io/westleycooper/ragoogle-frontend:0.1.0"
+observability_image = "ghcr.io/westleycooper/ragoogle-observability:0.1.0"
+project_id          = "my-gcp-project"

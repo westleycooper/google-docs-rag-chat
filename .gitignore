@@ -47,3 +47,8 @@ coverage/
 
 # --- frontend build output ---
 apps/*/dist/
+
+# --- terraform ---
+**/terraform.tfvars
+**/*.auto.tfvars
+**/.terraform.lock.hcl

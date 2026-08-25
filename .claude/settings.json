@@ -28,6 +28,12 @@
             "command": "\"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/domain-rules.sh\"",
             "timeout": 20,
             "statusMessage": "Checking domain layering..."
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/terraform-check.sh\"",
+            "timeout": 120,
+            "statusMessage": "Validating Terraform..."
           }
         ]
       }
