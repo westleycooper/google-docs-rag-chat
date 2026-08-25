@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generator": "tools/adr/adr.py",
   "generatedFrom": "docs/adr/*.md",
-  "count": 11,
+  "count": 12,
   "byComponent": {
     "platform": 1,
     "rag-core": 4,
@@ -10,11 +10,11 @@
     "infra": 1,
     "tooling": 1,
     "frontend": 2,
-    "vectorstore": 1
+    "vectorstore": 2
   },
   "byStatus": {
     "proposed": 0,
-    "accepted": 11,
+    "accepted": 12,
     "rejected": 0,
     "deprecated": 0,
     "superseded": 0
@@ -251,6 +251,27 @@
       "supersededBy": [],
       "summary": "**HNSW, with `vector_cosine_ops`, `m = 16`, `ef_construction = 64`.**",
       "path": "docs/adr/0011-hnsw-and-trigger-maintained-tsvector.md"
+    },
+    {
+      "id": 12,
+      "ref": "ADR-0012",
+      "title": "Use Postgres ts_rank_cd for lexical ranking rather than true BM25",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "vectorstore",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "retrieval",
+        "bm25",
+        "postgres",
+        "correction"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will use `ts_rank_cd(search_vector, query, 32)` for lexical ranking, and treat ADR-0004's \"BM25\" as shorthand for \"lexical relevance ranking\" rather than a literal algorithm commitment.",
+      "path": "docs/adr/0012-ts-rank-cd-rather-than-true-bm25.md"
     }
   ],
   "errors": []

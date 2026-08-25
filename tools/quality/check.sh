@@ -27,6 +27,7 @@ run "Tests + cover"  "${UVR[@]}" --with pytest --with pytest-asyncio --with pyte
 # so a clean checkout still gets a meaningful signal from the other five gates.
 if [ -n "${RAGOOGLE_TEST_DATABASE_URL:-}" ]; then
   run "Integration"   "${UVR[@]}" --with pytest --with pytest-asyncio --with "psycopg[binary]" \
+                        --with asyncpg --with sqlalchemy --with pgvector \
                         python -m pytest tests/integration -q
 else
   printf '\n\033[1m── Integration ──\033[0m\n'
