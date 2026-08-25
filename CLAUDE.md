@@ -44,6 +44,18 @@ Python is **3.12** (`.python-version`), managed by uv. `uv sync` for the full
 workspace; the gates run on ephemeral `uv run --no-project` envs so they work on
 a clean checkout.
 
+## Vendor smoke tests
+
+Unit tests run entirely against stubs, which proves the adapters' shape but not
+that the vendor agrees with it. `tools/smoke/vendors.py` closes that gap when a
+key is available and skips honestly when it is not:
+
+```bash
+VOYAGE_API_KEY=... ANTHROPIC_API_KEY=... uv run python tools/smoke/vendors.py
+```
+
+Not part of `check.sh` — it costs money and needs network.
+
 ## Decision records
 
 All architectural decisions live in `docs/adr/` in MADR format.

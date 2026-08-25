@@ -34,8 +34,9 @@ src = ["packages/ragoogle-core/src", "packages/ragoogle-infra/src", "apps/api/sr
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "SIM", "RUF", "ANN", "PT"]
 ignore = ["ANN401"]
-# "›" is the breadcrumb separator in Chunk.citation_label, not a mistyped ">".
-allowed-confusables = ["\u203a"]
+# "›" is the breadcrumb separator in Chunk.citation_label and "−" is the skip
+# glyph in the smoke-test output; neither is a mistyped ASCII character.
+allowed-confusables = ["\u203a", "\u2212"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]
