@@ -17,7 +17,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from ragoogle_api.deps import ContainerDep
 from ragoogle_api.mappers import budget_out, citations_out, trace_out
-from ragoogle_api.schemas import ChatRequestIn
+from ragoogle_api.schemas import ChatRequestIn, ChatStreamFrame
 from ragoogle_core.application.chat import (
     ChatRequest,
     CitationsAttached,
@@ -44,8 +44,13 @@ router = APIRouter(prefix="/chat", tags=["chat"])
                 "An SSE stream. Frame names: `trace` (a retrieval stage "
                 "finished), `citations` (the sources, sent before the prose "
                 "that references them), `delta` (answer text), `finished` (the "
-                "context budget and any degradation), `error`."
+                "context budget and any degradation), `error`. Each frame's "
+                "`data` is one populated field of `ChatStreamFrame`."
             ),
+            # `model` is declared so the frame payload schemas reach the
+            # OpenAPI components and the frontend can generate types for them;
+            # `content` states what the transport actually is.
+            "model": ChatStreamFrame,
             "content": {"text/event-stream": {"schema": {"type": "string"}}},
         }
     },

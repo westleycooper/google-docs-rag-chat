@@ -44,3 +44,6 @@ coverage/
 # --- os / editor ---
 .DS_Store
 *.swp
+
+# --- frontend build output ---
+apps/*/dist/

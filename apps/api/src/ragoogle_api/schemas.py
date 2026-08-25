@@ -118,6 +118,39 @@ class BudgetOut(BaseModel):
     items: list[ContextItemOut]
 
 
+class ChatStreamFrame(BaseModel):
+    """The union of payloads carried by the chat SSE stream.
+
+    Exists purely so these schemas reach the OpenAPI document. An
+    `text/event-stream` response can only be described as a string, so without
+    this the frame payloads would be invisible to codegen and the frontend
+    would be hand-writing types that drift from the server the moment either
+    side changes.
+
+    Exactly one field is populated per frame; the SSE `event:` name says which.
+    """
+
+    trace: TraceEventOut | None = Field(
+        default=None, description="frame `trace` — one retrieval stage finished"
+    )
+    citations: list[CitationOut] | None = Field(
+        default=None, description="frame `citations` — the sources for this answer"
+    )
+    delta: str | None = Field(default=None, description="frame `delta` — answer text")
+    budget: BudgetOut | None = Field(
+        default=None, description="frame `finished` — the context budget"
+    )
+    degraded: list[str] | None = Field(
+        default=None, description="frame `finished` — anything that degraded"
+    )
+    branched: bool | None = Field(
+        default=None,
+        description="frame `finished` — whether the reasoning was non-linear, "
+        "which is what escalates the trace to the graph view",
+    )
+    message: str | None = Field(default=None, description="frame `error` — why the stream stopped")
+
+
 class ChatRequestIn(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 

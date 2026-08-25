@@ -1,6 +1,55 @@
 {
   "components": {
     "schemas": {
+      "BudgetOut": {
+        "properties": {
+          "available_tokens": {
+            "title": "Available Tokens",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContextItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "max_tokens": {
+            "title": "Max Tokens",
+            "type": "integer"
+          },
+          "over_budget": {
+            "title": "Over Budget",
+            "type": "boolean"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentUsageOut"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "used_tokens": {
+            "title": "Used Tokens",
+            "type": "integer"
+          },
+          "utilisation": {
+            "title": "Utilisation",
+            "type": "number"
+          }
+        },
+        "required": [
+          "max_tokens",
+          "available_tokens",
+          "used_tokens",
+          "utilisation",
+          "over_budget",
+          "segments",
+          "items"
+        ],
+        "title": "BudgetOut",
+        "type": "object"
+      },
       "CaseIn": {
         "properties": {
           "expected_answer": {
@@ -269,6 +318,168 @@
         "title": "ChatRequestIn",
         "type": "object"
       },
+      "ChatStreamFrame": {
+        "description": "The union of payloads carried by the chat SSE stream.\n\nExists purely so these schemas reach the OpenAPI document. An\n`text/event-stream` response can only be described as a string, so without\nthis the frame payloads would be invisible to codegen and the frontend\nwould be hand-writing types that drift from the server the moment either\nside changes.\n\nExactly one field is populated per frame; the SSE `event:` name says which.",
+        "properties": {
+          "branched": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "frame `finished` \u2014 whether the reasoning was non-linear, which is what escalates the trace to the graph view",
+            "title": "Branched"
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BudgetOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "frame `finished` \u2014 the context budget"
+          },
+          "citations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CitationOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "frame `citations` \u2014 the sources for this answer",
+            "title": "Citations"
+          },
+          "degraded": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "frame `finished` \u2014 anything that degraded",
+            "title": "Degraded"
+          },
+          "delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "frame `delta` \u2014 answer text",
+            "title": "Delta"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "frame `error` \u2014 why the stream stopped",
+            "title": "Message"
+          },
+          "trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceEventOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "frame `trace` \u2014 one retrieval stage finished"
+          }
+        },
+        "title": "ChatStreamFrame",
+        "type": "object"
+      },
+      "CitationOut": {
+        "description": "A source reference, with everything the chat UI needs to render a chip.",
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "found_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Found By",
+            "type": "array"
+          },
+          "location": {
+            "description": "Heading trail, or 'part N' as a fallback.",
+            "title": "Location",
+            "type": "string"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "relevance": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Relevance",
+            "type": "number"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "web_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Web Url"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "document_id",
+          "title",
+          "mime_type",
+          "web_url",
+          "location",
+          "relevance",
+          "found_by",
+          "excerpt"
+        ],
+        "title": "CitationOut",
+        "type": "object"
+      },
       "ComponentNode": {
         "description": "One node in the observability topology graph (ADR-0006).",
         "properties": {
@@ -336,6 +547,52 @@
           "status"
         ],
         "title": "ComponentNode",
+        "type": "object"
+      },
+      "ContextItemOut": {
+        "properties": {
+          "context_class": {
+            "title": "Context Class",
+            "type": "string"
+          },
+          "evicts_next": {
+            "description": "Whether this item is in the eviction frontier for the next turn -- the signal that makes context loss visible before it costs an answer.",
+            "title": "Evicts Next",
+            "type": "boolean"
+          },
+          "item_id": {
+            "title": "Item Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "relevance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relevance"
+          },
+          "token_count": {
+            "title": "Token Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item_id",
+          "context_class",
+          "token_count",
+          "label",
+          "relevance",
+          "evicts_next"
+        ],
+        "title": "ContextItemOut",
         "type": "object"
       },
       "CredentialIn": {
@@ -968,6 +1225,34 @@
         "title": "RunOut",
         "type": "object"
       },
+      "SegmentUsageOut": {
+        "properties": {
+          "context_class": {
+            "title": "Context Class",
+            "type": "string"
+          },
+          "fraction": {
+            "title": "Fraction",
+            "type": "number"
+          },
+          "item_count": {
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "token_count": {
+            "title": "Token Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "context_class",
+          "token_count",
+          "item_count",
+          "fraction"
+        ],
+        "title": "SegmentUsageOut",
+        "type": "object"
+      },
       "SkipOut": {
         "properties": {
           "actionable": {
@@ -1212,6 +1497,61 @@
         "title": "TopologyResponse",
         "type": "object"
       },
+      "TraceEventOut": {
+        "properties": {
+          "considered": {
+            "title": "Considered",
+            "type": "integer"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "title": "Detail",
+            "type": "object"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "rejected": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rejected",
+            "type": "array"
+          },
+          "selected": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Selected",
+            "type": "array"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage",
+          "label",
+          "summary",
+          "duration_ms",
+          "considered",
+          "selected",
+          "rejected",
+          "detail"
+        ],
+        "title": "TraceEventOut",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1278,13 +1618,18 @@
         "responses": {
           "200": {
             "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStreamFrame"
+                }
+              },
               "text/event-stream": {
                 "schema": {
                   "type": "string"
                 }
               }
             },
-            "description": "An SSE stream. Frame names: `trace` (a retrieval stage finished), `citations` (the sources, sent before the prose that references them), `delta` (answer text), `finished` (the context budget and any degradation), `error`."
+            "description": "An SSE stream. Frame names: `trace` (a retrieval stage finished), `citations` (the sources, sent before the prose that references them), `delta` (answer text), `finished` (the context budget and any degradation), `error`. Each frame's `data` is one populated field of `ChatStreamFrame`."
           },
           "422": {
             "content": {

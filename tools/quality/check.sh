@@ -32,6 +32,20 @@ run "Mypy api"       uv run mypy --strict --ignore-missing-imports \
 run "Tests + cover"  uv run pytest tests/ -q --ignore=tests/integration \
                        --cov=ragoogle_core --cov-report=term-missing --cov-fail-under=100
 
+# ── frontend ────────────────────────────────────────────────────────────
+# Skipped when dependencies are absent, so the Python gates still run on a
+# checkout where nobody has touched the frontend.
+if [ -d apps/frontend/node_modules ]; then
+  FE=(pnpm --dir apps/frontend)
+  run "Codegen fresh"  "${FE[@]}" codegen:check
+  run "TS typecheck"   "${FE[@]}" typecheck
+  run "ESLint"         "${FE[@]}" lint
+  run "Frontend tests" "${FE[@]}" test
+else
+  printf '\n\033[1m── Frontend ──\033[0m\n'
+  printf '\033[33m− skipped: run `pnpm install` in apps/frontend\033[0m\n'
+fi
+
 # Integration tests need a live Postgres. Skipped rather than failed when absent,
 # so a clean checkout still gets a meaningful signal from the other gates.
 if [ -n "${RAGOOGLE_TEST_DATABASE_URL:-}" ]; then

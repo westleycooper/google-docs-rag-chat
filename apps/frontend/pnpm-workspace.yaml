@@ -1,0 +1,12 @@
+packages:
+  - '.'
+
+# pnpm 11 refuses to install while a dependency's build script is neither
+# approved nor denied, and that refusal blocks every script gated on an install
+# check. Both decisions are explicit here:
+#   esbuild        -- approved; it ships prebuilt binaries Vite needs.
+#   @scarf/scarf   -- denied; its install script reports analytics to a third
+#                     party, which we do not want running on any machine.
+allowBuilds:
+  esbuild: true
+  '@scarf/scarf': false
