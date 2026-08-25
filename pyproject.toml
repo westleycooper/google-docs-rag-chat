@@ -23,6 +23,7 @@ dev = [
     "hypothesis>=6.122",
     "ruff>=0.9",
     "mypy>=1.14",
+    "psycopg[binary]>=3.3.4",
 ]
 
 [tool.ruff]
@@ -51,6 +52,9 @@ mypy_path = "packages/ragoogle-core/src:packages/ragoogle-infra/src:apps/api/src
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Repo root on sys.path so `from tests.fakes import ...` resolves once the
+# workspace packages are installed rather than picked up from src/.
+pythonpath = ["."]
 addopts = "-q --strict-markers"
 asyncio_mode = "auto"
 markers = [

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Every quality gate Ragoogle enforces, in one command.
-# Run locally with: ./tools/quality/check.sh    CI runs exactly this.
+#
+#   ./tools/quality/check.sh          # unit gates
+#   docker compose up -d postgres && export RAGOOGLE_TEST_DATABASE_URL=...
+#   ./tools/quality/check.sh          # ...and the integration gate too
+#
+# CI runs exactly this. Requires `uv sync --all-packages` to have run.
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -12,23 +17,22 @@ run() {
   else printf '\033[31m✗ %s\033[0m\n' "$name"; FAILED+=("$name"); fi
 }
 
-UVR=(uv run --python 3.12 --no-project)
+TARGETS=(packages/ apps/ tools/ tests/)
 
-run "ADR index"      python3 tools/adr/adr.py index --check
-run "Layering"       python3 tools/quality/layering.py
-run "Ruff lint"      "${UVR[@]}" --with ruff ruff check packages/ apps/ tools/ tests/
-run "Ruff format"    "${UVR[@]}" --with ruff ruff format --check packages/ apps/ tools/ tests/
-run "Mypy strict"    "${UVR[@]}" --with mypy mypy --strict packages/ragoogle-core/src/ragoogle_core
-run "Tests + cover"  "${UVR[@]}" --with pytest --with pytest-asyncio --with pytest-cov \
-                        python -m pytest tests/ -q --ignore=tests/integration \
-                        --cov=ragoogle_core --cov-report=term-missing --cov-fail-under=100
+run "ADR index"      uv run python tools/adr/adr.py index --check
+run "Layering"       uv run python tools/quality/layering.py
+run "Ruff lint"      uv run ruff check "${TARGETS[@]}"
+run "Ruff format"    uv run ruff format --check "${TARGETS[@]}"
+run "Mypy strict"    uv run mypy --strict packages/ragoogle-core/src/ragoogle_core
+run "Mypy adapters"  uv run mypy --strict --ignore-missing-imports \
+                       packages/ragoogle-infra/src/ragoogle_infra
+run "Tests + cover"  uv run pytest tests/ -q --ignore=tests/integration \
+                       --cov=ragoogle_core --cov-report=term-missing --cov-fail-under=100
 
 # Integration tests need a live Postgres. Skipped rather than failed when absent,
-# so a clean checkout still gets a meaningful signal from the other five gates.
+# so a clean checkout still gets a meaningful signal from the other gates.
 if [ -n "${RAGOOGLE_TEST_DATABASE_URL:-}" ]; then
-  run "Integration"   "${UVR[@]}" --with pytest --with pytest-asyncio --with "psycopg[binary]" \
-                        --with asyncpg --with sqlalchemy --with pgvector \
-                        python -m pytest tests/integration -q
+  run "Integration"  uv run pytest tests/integration -q
 else
   printf '\n\033[1m── Integration ──\033[0m\n'
   printf '\033[33m− skipped: set RAGOOGLE_TEST_DATABASE_URL (docker compose up -d postgres)\033[0m\n'
