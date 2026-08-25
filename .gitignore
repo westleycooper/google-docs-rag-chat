@@ -1,0 +1,46 @@
+# --- Claude Code ---
+.claude/settings.local.json
+.claude/COMMIT_MSG
+
+# --- secrets (auto-commit hook also refuses these; belt and braces) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.key
+*-key.json
+*credentials*.json
+*service-account*.json
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# --- node ---
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+coverage/
+
+# --- terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform.lock.hcl
+
+# --- os / editor ---
+.DS_Store
+*.swp

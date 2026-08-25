@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "generator": "tools/adr/adr.py",
+  "generatedFrom": "docs/adr/*.md",
+  "count": 6,
+  "byComponent": {
+    "platform": 1,
+    "rag-core": 2,
+    "ingestion": 1,
+    "infra": 1,
+    "tooling": 1
+  },
+  "byStatus": {
+    "proposed": 0,
+    "accepted": 6,
+    "rejected": 0,
+    "deprecated": 0,
+    "superseded": 0
+  },
+  "records": [
+    {
+      "id": 1,
+      "ref": "ADR-0001",
+      "title": "Structure Ragoogle as a DDD hexagonal monorepo",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "platform",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "architecture",
+        "ddd",
+        "monorepo"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will structure the platform as a monorepo of deployable apps over a set of bounded contexts, each context following ports-and-adapters (hexagonal) layering.",
+      "path": "docs/adr/0001-ddd-hexagonal-monorepo-for-ragoogle.md"
+    },
+    {
+      "id": 2,
+      "ref": "ADR-0002",
+      "title": "Use Voyage voyage-3-large as the default embedding model",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "rag-core",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "embeddings",
+        "retrieval",
+        "vendor",
+        "cost"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will use **Voyage `voyage-3-large` at 1024 dimensions** as the default embedding model, behind an `EmbeddingProvider` port with adapters for all four candidates.",
+      "path": "docs/adr/0002-voyage-3-large-as-default-embedding-model.md"
+    },
+    {
+      "id": 3,
+      "ref": "ADR-0003",
+      "title": "Support both service-account and OAuth authentication for Google Drive",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "ingestion",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "auth",
+        "google-drive",
+        "permissions",
+        "security"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will support **both modes, selectable per document source** in the configuration area, behind a single `SourceCredential` port.",
+      "path": "docs/adr/0003-dual-mode-google-drive-authentication.md"
+    },
+    {
+      "id": 4,
+      "ref": "ADR-0004",
+      "title": "Hybrid dense/BM25 retrieval fused with RRF and a cross-encoder rerank",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "rag-core",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "retrieval",
+        "pgvector",
+        "ranking",
+        "citations"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will implement three-stage retrieval:",
+      "path": "docs/adr/0004-hybrid-retrieval-with-rrf-and-cross-encoder-rerank.md"
+    },
+    {
+      "id": 5,
+      "ref": "ADR-0005",
+      "title": "Provision Ragoogle with Terraform across Azure, AWS and GCP",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "infra",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "terraform",
+        "iac",
+        "multi-cloud",
+        "portability"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will write Terraform as a set of **cloud-agnostic root modules over per-cloud implementation modules**, with a shared contract each cloud must satisfy: managed Postgres with the `vector` extension, a container runtime for the API and frontend, a KMS-backed key for credential envelope encryption (see [ADR-0003](0003-dual-mode-google-drive-authentication.md)), an object store for raw document snapshots, and an OTLP-compatible telemetry sink.",
+      "path": "docs/adr/0005-terraform-multi-cloud-iac.md"
+    },
+    {
+      "id": 6,
+      "ref": "ADR-0006",
+      "title": "Enforce a conventional-commit auto-commit hook and ADR-as-code",
+      "status": "accepted",
+      "date": "2026-08-25",
+      "component": "tooling",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "git",
+        "hooks",
+        "adr",
+        "governance",
+        "observability"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will treat both as automation rather than discipline.",
+      "path": "docs/adr/0006-auto-commit-and-adr-as-code.md"
+    }
+  ],
+  "errors": []
+}
