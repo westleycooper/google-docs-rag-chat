@@ -6,10 +6,19 @@ cases themselves know nothing about it, which is what lets them be tested agains
 the fakes in `tests/fakes.py` with no network and no database.
 """
 
+from ragoogle_core.application.ingestion import IngestRequest, IngestSource
 from ragoogle_core.application.retrieval import (
     RetrievalRequest,
     RetrievalResult,
     RetrieveContext,
 )
+from ragoogle_core.application.segmentation import segment
 
-__all__ = ["RetrievalRequest", "RetrievalResult", "RetrieveContext"]
+__all__ = [
+    "IngestRequest",
+    "IngestSource",
+    "RetrievalRequest",
+    "RetrievalResult",
+    "RetrieveContext",
+    "segment",
+]

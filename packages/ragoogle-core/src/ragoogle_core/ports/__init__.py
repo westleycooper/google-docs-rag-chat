@@ -17,18 +17,26 @@ from ragoogle_core.ports.document_source import (
     SourceListing,
 )
 from ragoogle_core.ports.embedding import EmbeddingProvider
+from ragoogle_core.ports.repositories import (
+    DocumentCatalogue,
+    RunJournal,
+    SourceCatalogue,
+)
 from ragoogle_core.ports.reranker import Reranker
 from ragoogle_core.ports.tokenizer import Tokenizer
 from ragoogle_core.ports.vector_store import SearchHit, VectorStore
 
 __all__ = [
     "ChatModel",
+    "DocumentCatalogue",
     "DocumentSource",
     "EmbeddingProvider",
     "ModelReply",
     "ModelSpec",
     "Reranker",
+    "RunJournal",
     "SearchHit",
+    "SourceCatalogue",
     "SourceDocument",
     "SourceListing",
     "Tokenizer",

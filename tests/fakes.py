@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 
 from ragoogle_core.ingestion.skip import SkipRecord
 from ragoogle_core.ports import ModelReply, ModelSpec, SearchHit, SourceDocument, SourceListing
-from ragoogle_core.retrieval.chunk import Chunk
+from ragoogle_core.retrieval.chunk import Chunk, DocumentRef
 from ragoogle_core.retrieval.embedding import EmbeddingSpec, EmbeddingVector
 from ragoogle_core.retrieval.ranking import Candidate, RetrievalMethod
 from ragoogle_core.shared.identifiers import ChunkId, DocumentId, SourceId
@@ -231,3 +231,51 @@ class FakeChatModel:
         self.prompts.append(system)
         for word in self.reply_text.split():
             yield word + " "
+
+
+@dataclass
+class FakeDocumentCatalogue:
+    """Satisfies `DocumentCatalogue`."""
+
+    known: dict[str, str | None] = field(default_factory=dict)
+    refs: dict[str, DocumentRef] = field(default_factory=dict)
+    deleted: list[DocumentId] = field(default_factory=list)
+
+    async def checksums(self, source_id: SourceId) -> dict[str, str | None]:
+        return dict(self.known)
+
+    async def upsert(self, source_id: SourceId, document: SourceDocument) -> DocumentRef:
+        ref = self.refs.get(document.external_id) or DocumentRef(
+            document_id=DocumentId.new(),
+            source_id=source_id,
+            external_id=document.external_id,
+            title=document.title,
+            mime_type=document.mime_type,
+            web_url=document.web_url,
+            modified_at=document.modified_at,
+        )
+        self.refs[document.external_id] = ref
+        self.known[document.external_id] = document.checksum
+        return ref
+
+    async def delete_missing(
+        self, source_id: SourceId, seen_external_ids: Sequence[str]
+    ) -> list[DocumentId]:
+        gone = [e for e in self.refs if e not in set(seen_external_ids)]
+        removed = [self.refs.pop(e).document_id for e in gone]
+        self.deleted.extend(removed)
+        return removed
+
+
+@dataclass
+class FakeRunJournal:
+    """Satisfies `RunJournal`. Keeps every save so tests can inspect progress."""
+
+    saves: list[object] = field(default_factory=list)
+    previous: object | None = None
+
+    async def save(self, run: object) -> None:
+        self.saves.append(run)
+
+    async def latest(self, source_id: SourceId) -> object | None:
+        return self.previous
