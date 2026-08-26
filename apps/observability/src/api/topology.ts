@@ -20,6 +20,13 @@ export interface ComponentNode {
   latency_ms: number | null;
   depends_on: string[];
   adr_refs: string[];
+  /** Where a human can go look at this component. Null when nothing is
+   * meaningfully clickable (e.g. Postgres). */
+  url: string | null;
+  /** False marks a documentation-only node (e.g. infra, tooling) with no
+   * running process to poll -- its status is always 'unknown', but that is a
+   * structural fact, not a failed check. */
+  checkable: boolean;
 }
 
 export interface Topology {
@@ -58,6 +65,8 @@ export const fetchTopology = async (
             latency_ms: null,
             depends_on: [],
             adr_refs: [],
+            url: null,
+            checkable: true,
           },
         ],
         generated_at: new Date().toISOString(),

@@ -9,10 +9,25 @@
  * one in twelve men has a red-green colour vision deficiency, and an
  * architecture dashboard whose only failure signal is "the red one" is unusable
  * for them.
+ *
+ * Nodes render as unfilled, rounded-corner wireframe cubes rather than solid
+ * shapes — a plain line-art look reads better against the scanline background
+ * than a lit, filled mesh, and it means a node's silhouette never fights its
+ * status colour for attention. A node still carries an invisible solid twin
+ * for raycasting: a pure line has near-zero hit area, and picking one exactly
+ * would be unreasonably fussy.
+ *
+ * The camera is user-driven (OrbitControls) rather than auto-rotating: once a
+ * viewer can grab the scene themselves, ambient motion only fights their drag.
  */
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { Line2 } from 'three/addons/lines/Line2.js';
+import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import type { ComponentNode, NodeStatus } from '@/api/topology';
 
 // The Retro Teal family from App.tsx's MUI theme and the chat app's default
@@ -39,6 +54,18 @@ const TIER_Y: Record<string, number> = {
   datastore: -1.5,
   external: -3.4,
 };
+
+/** Box proportions per kind, so shape still hints at role now every node is a
+ * rounded cube rather than a distinct primitive. */
+const NODE_DIMENSIONS: Record<string, [number, number, number]> = {
+  frontend: [1.15, 0.65, 0.6],
+  service: [0.9, 0.9, 0.85],
+  datastore: [0.8, 1.05, 0.8],
+  external: [0.7, 0.7, 0.65],
+};
+
+const CONNECTOR_COLOUR = 0x5fd4c0; // bright enough to read against the near-black background
+const CONNECTOR_WIDTH_PX = 2.5;
 
 /**
  * A node label as a sprite.
@@ -86,6 +113,22 @@ const makeLabel = (text: string, colour: string): THREE.Sprite => {
   return sprite;
 };
 
+/** A thin circular outline -- the selection indicator, kept line-art like
+ * everything else rather than a filled ring mesh. */
+const makeSelectionRing = (radius: number, colour: number): THREE.LineLoop => {
+  const points: THREE.Vector3[] = [];
+  const segments = 48;
+  for (let i = 0; i <= segments; i++) {
+    const angle = (i / segments) * Math.PI * 2;
+    points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0));
+  }
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  return new THREE.LineLoop(
+    geometry,
+    new THREE.LineBasicMaterial({ color: colour, transparent: true, opacity: 0.9 }),
+  );
+};
+
 interface Props {
   nodes: ComponentNode[];
   onSelect: (node: ComponentNode) => void;
@@ -112,7 +155,6 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     scene.fog = new THREE.Fog(0x071613, 12, 30); // near-black teal, matching the MUI background
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
     camera.position.set(0, -0.3, 12.5);
-    camera.lookAt(0, -0.3, 0);
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -123,7 +165,22 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x071613, 1);
+    renderer.domElement.style.cursor = 'grab';
     mount.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, -0.3, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 4;
+    controls.maxDistance = 24;
+    controls.addEventListener('start', () => {
+      renderer.domElement.style.cursor = 'grabbing';
+    });
+    controls.addEventListener('end', () => {
+      renderer.domElement.style.cursor = 'grab';
+    });
+    controls.update();
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
     const key = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -151,6 +208,11 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const group = new THREE.Group();
     scene.add(group);
 
+    // Fat lines need the viewport resolution in their material; every one
+    // created gets tracked so a resize can update them all.
+    const fatLineMaterials: LineMaterial[] = [];
+    const resolution = new THREE.Vector2(width, height);
+
     // Edges first so nodes draw over them.
     for (const node of nodes) {
       const from = positions.get(node.id);
@@ -158,66 +220,83 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       for (const dependency of node.depends_on) {
         const to = positions.get(dependency);
         if (!to) continue;
-        const geometry = new THREE.BufferGeometry().setFromPoints([from, to]);
-        const line = new THREE.Line(
-          geometry,
-          new THREE.LineBasicMaterial({
-            color: 0x1e3d37, // dim teal, low-contrast against the near-black background
-            transparent: true,
-            opacity: 0.6,
-          }),
-        );
-        group.add(line);
+        const geometry = new LineGeometry();
+        geometry.setPositions([from.x, from.y, from.z, to.x, to.y, to.z]);
+        const material = new LineMaterial({
+          color: CONNECTOR_COLOUR,
+          linewidth: CONNECTOR_WIDTH_PX,
+          transparent: true,
+          opacity: 0.85,
+          resolution,
+          worldUnits: false,
+        });
+        fatLineMaterials.push(material);
+        group.add(new Line2(geometry, material));
       }
     }
 
-    const pulsing: { mesh: THREE.Mesh; rate: number; base: number }[] = [];
+    const pulsing: { material: THREE.LineBasicMaterial; rate: number; base: number }[] = [];
     const pickable: THREE.Mesh[] = [];
 
     for (const node of nodes) {
       const position = positions.get(node.id);
       if (!position) continue;
 
-      // Shape encodes kind, so the graph is readable in a screenshot or by
-      // someone who cannot distinguish the status colours.
-      const geometry =
-        node.kind === 'datastore'
-          ? new THREE.CylinderGeometry(0.5, 0.5, 0.7, 24)
-          : node.kind === 'external'
-            ? new THREE.OctahedronGeometry(0.55)
-            : node.kind === 'frontend'
-              ? new THREE.BoxGeometry(0.9, 0.7, 0.7)
-              : new THREE.SphereGeometry(0.55, 28, 20);
+      const muted = !node.checkable || node.status === 'unknown';
+      const [w, h, d] = NODE_DIMENSIONS[node.kind] ?? [0.85, 0.85, 0.85];
+      const shortest = Math.min(w, h, d);
+      const geometry = new RoundedBoxGeometry(w, h, d, 3, shortest * 0.22);
+
+      // An invisible solid twin carries the raycast hit-test: a bare wireframe
+      // has almost no area to click, and picking one precisely would be
+      // needlessly fussy for something this small on screen.
+      const hitTarget = new THREE.Mesh(
+        geometry,
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+      );
+      hitTarget.position.copy(position);
+      hitTarget.userData = { nodeId: node.id };
+      group.add(hitTarget);
+      pickable.push(hitTarget);
 
       const colour = STATUS_COLOURS[node.status];
-      const material = new THREE.MeshStandardMaterial({
+      const edges = new THREE.EdgesGeometry(geometry, 8);
+      const lineMaterial = new THREE.LineBasicMaterial({
         color: colour,
-        emissive: colour,
-        emissiveIntensity: node.status === 'unknown' ? 0.05 : 0.35,
-        roughness: 0.4,
-        metalness: 0.15,
+        transparent: true,
+        opacity: node.checkable ? 0.95 : 0.5,
       });
-
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.copy(position);
-      mesh.userData = { nodeId: node.id };
-      group.add(mesh);
-      pickable.push(mesh);
+      const wireframe = new THREE.LineSegments(edges, lineMaterial);
+      wireframe.position.copy(position);
+      if (!node.checkable) {
+        // A dashed outline reads as "reference only, nothing to poll" rather
+        // than "unknown, might be broken" -- the same grey as a genuinely
+        // unreachable node would otherwise be indistinguishable from a
+        // structurally non-live one (this is the "why is infra greyed out"
+        // question made visible instead of asked).
+        const dashedMaterial = new THREE.LineDashedMaterial({
+          color: colour,
+          transparent: true,
+          opacity: 0.5,
+          dashSize: 0.06,
+          gapSize: 0.05,
+        });
+        wireframe.material = dashedMaterial;
+        wireframe.computeLineDistances();
+      }
+      group.add(wireframe);
 
       const rate = STATUS_PULSE[node.status];
-      if (rate > 0 && !reduceMotion) {
-        pulsing.push({ mesh, rate, base: 0.35 });
+      if (rate > 0 && !reduceMotion && node.checkable) {
+        pulsing.push({ material: lineMaterial, rate, base: 0.55 });
       }
 
-      const label = makeLabel(node.label, node.status === 'unknown' ? '#8FBDB4' : '#E4FFFB');
-      label.position.set(position.x, position.y - 0.82, position.z);
+      const label = makeLabel(node.label, muted ? '#8FBDB4' : '#E4FFFB');
+      label.position.set(position.x, position.y - h / 2 - 0.27, position.z);
       group.add(label);
 
       if (node.id === selectedId) {
-        const ring = new THREE.Mesh(
-          new THREE.TorusGeometry(0.85, 0.03, 12, 40),
-          new THREE.MeshBasicMaterial({ color: 0x2dd4bf }), // bright teal, matches MUI primary
-        );
+        const ring = makeSelectionRing(Math.max(w, d) * 0.75, 0x2dd4bf); // bright teal, matches MUI primary
         ring.position.copy(position);
         group.add(ring);
       }
@@ -241,15 +320,10 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     let frame = 0;
     const render = () => {
       const elapsed = clock.getElapsedTime();
-      for (const { mesh, rate, base } of pulsing) {
-        const material = mesh.material as THREE.MeshStandardMaterial;
-        material.emissiveIntensity =
-          base + 0.45 * (0.5 + 0.5 * Math.sin(elapsed * rate * Math.PI * 2));
+      for (const { material, rate, base } of pulsing) {
+        material.opacity = base + 0.45 * (0.5 + 0.5 * Math.sin(elapsed * rate * Math.PI * 2));
       }
-      if (!reduceMotion) {
-        // A gentle sway gives depth cues; kept small so labels stay legible.
-        group.rotation.y = Math.sin(elapsed * 0.1) * 0.06;
-      }
+      controls.update();
       renderer.render(scene, camera);
       frame = requestAnimationFrame(render);
     };
@@ -261,6 +335,8 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      resolution.set(w, h);
+      for (const material of fatLineMaterials) material.resolution.copy(resolution);
     };
     const observer = new ResizeObserver(resize);
     observer.observe(mount);
@@ -268,9 +344,15 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      controls.dispose();
       renderer.domElement.removeEventListener('click', onClick);
       group.traverse((object) => {
-        if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
+        if (
+          object instanceof THREE.Mesh ||
+          object instanceof THREE.Line ||
+          object instanceof THREE.LineSegments ||
+          object instanceof Line2
+        ) {
           object.geometry.dispose();
           const material = object.material;
           if (Array.isArray(material)) material.forEach((m) => m.dispose());

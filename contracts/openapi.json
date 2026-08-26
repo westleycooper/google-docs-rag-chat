@@ -547,6 +547,12 @@
             "title": "Adr Refs",
             "type": "array"
           },
+          "checkable": {
+            "default": true,
+            "description": "Whether `status` reflects an actual live check. False marks a documentation-only node (e.g. infra, tooling) that has no running process to poll -- its `status` is always 'unknown', but that is a structural fact, not a failed check.",
+            "title": "Checkable",
+            "type": "boolean"
+          },
           "depends_on": {
             "default": [],
             "items": {
@@ -593,6 +599,18 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where a human can go look at this component -- a browser-reachable origin, a vendor dashboard. None when nothing is meaningfully clickable (e.g. Postgres).",
+            "title": "Url"
           }
         },
         "required": [

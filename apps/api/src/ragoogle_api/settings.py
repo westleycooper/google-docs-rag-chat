@@ -52,6 +52,18 @@ class Settings(BaseSettings):
     frontend_url: str | None = "http://frontend"
     observability_url: str | None = "http://observability"
 
+    # Ping targets for the two nodes that were permanently "unknown" -- Claude
+    # and Voyage have no health API a customer can call, so these point at the
+    # closest honest proxy: each vendor's public marketing site, which answers
+    # 200 directly with no redirect. (status.anthropic.com was tried first and
+    # rejected: it 301s on first hit, and _ping treats a redirect as down by
+    # design -- see test_a_redirect_is_not_treated_as_success -- so it always
+    # read as down regardless of Anthropic's actual status.) Either can be
+    # unset to fall back to "unknown" rather than a guess, same as
+    # frontend_url/observability_url.
+    anthropic_ping_url: str | None = "https://www.anthropic.com"
+    voyage_ping_url: str | None = "https://www.voyageai.com"
+
     # ADR-0016. A real Google OAuth consent flow, not a "paste a token you
     # already have" text box. `google_oauth_redirect_uri` must be registered
     # verbatim as an authorized redirect URI on the OAuth client in Google
@@ -66,6 +78,12 @@ class Settings(BaseSettings):
     # network hostname used for the topology ping and is unreachable from an
     # actual browser).
     frontend_public_url: str = "http://localhost:5173"
+
+    # Same distinction as frontend_public_url, for the observability app's own
+    # node, and the API's own node (linked to its interactive docs rather than
+    # its bare origin, since that is what a human clicking it actually wants).
+    observability_public_url: str = "http://localhost:5174"
+    api_public_url: str = "http://localhost:8000/docs"
 
     @property
     def cors_origin_list(self) -> list[str]:

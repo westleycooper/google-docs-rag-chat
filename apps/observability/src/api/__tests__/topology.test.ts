@@ -3,8 +3,8 @@ import { fetchTopology, type Topology } from '../topology';
 
 const healthy: Topology = {
   nodes: [
-    { id: 'api', label: 'API', kind: 'service', status: 'ok', latency_ms: 12, depends_on: ['vectorstore'], adr_refs: ['ADR-0001'] },
-    { id: 'vectorstore', label: 'Postgres', kind: 'datastore', status: 'ok', latency_ms: null, depends_on: [], adr_refs: ['ADR-0011'] },
+    { id: 'api', label: 'API', kind: 'service', status: 'ok', latency_ms: 12, depends_on: ['vectorstore'], adr_refs: ['ADR-0001'], url: 'http://localhost:8000/docs', checkable: true },
+    { id: 'vectorstore', label: 'Postgres', kind: 'datastore', status: 'ok', latency_ms: null, depends_on: [], adr_refs: ['ADR-0011'], url: null, checkable: true },
   ],
   generated_at: '2026-08-26T00:00:00Z',
 };

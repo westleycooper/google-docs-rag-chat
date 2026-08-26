@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generator": "tools/adr/adr.py",
   "generatedFrom": "docs/adr/*.md",
-  "count": 16,
+  "count": 17,
   "byComponent": {
     "platform": 1,
     "rag-core": 6,
@@ -10,11 +10,12 @@
     "infra": 1,
     "tooling": 1,
     "frontend": 3,
-    "vectorstore": 2
+    "vectorstore": 2,
+    "observability": 1
   },
   "byStatus": {
     "proposed": 0,
-    "accepted": 16,
+    "accepted": 17,
     "rejected": 0,
     "deprecated": 0,
     "superseded": 0
@@ -356,6 +357,27 @@
       "supersededBy": [],
       "summary": "We keep `drive.readonly` as the sole scope for both auth modes (`SCOPES` in `google_oauth.py` is `DRIVE_SCOPES + (\"openid\", \"email\")`) and build the missing pieces around it:",
       "path": "docs/adr/0016-oauth-consent-flow-and-drive-readonly-over-drive-file-for-dr.md"
+    },
+    {
+      "id": 17,
+      "ref": "ADR-0017",
+      "title": "Separate Claude/Voyage liveness and mark non-runtime topology nodes as reference-only",
+      "status": "accepted",
+      "date": "2026-08-26",
+      "component": "observability",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "topology",
+        "three.js",
+        "health-check",
+        "ux"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "**Split and check the vendors.** `platform` becomes two nodes, `anthropic` and `voyage`, each pinged independently (reusing the existing `_ping` helper) at a new `anthropic_ping_url` / `voyage_ping_url` setting. Neither vendor exposes an unauthenticated health endpoint, so these point at each vendor's public marketing site as the closest honest proxy for \"is anything answering there\" — not a claim about API status or key validity, the same standard `_ping` already holds `frontend`/`observability` to. `status.anthropic.com` was tried first and rejected: it 301-redirects on first hit, and `_ping` treats a redirect as `down` by design (a health probe silently redirected to e.g. a login page is exactly the false positive that rule exists to catch), so it read as permanently down regardless of Anthropic's actual status. Neither new node id is forced into the ADR `component` vocabulary — Voyage-related decisions are already tagged `rag-core`, where a real \"RAG Core\" node exists, so `anthropic`/`voyage` simply carry no ADRs rather than an incorrect one.",
+      "path": "docs/adr/0017-separate-claude-voyage-liveness-and-mark-non-runtime-topolog.md"
     }
   ],
   "errors": []

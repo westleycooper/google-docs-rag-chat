@@ -51,6 +51,7 @@ export * from './componentNode';
 export * from './componentNodeKind';
 export * from './componentNodeLatencyMs';
 export * from './componentNodeStatus';
+export * from './componentNodeUrl';
 export * from './contextItemOut';
 export * from './contextItemOutRelevance';
 export * from './credentialIn';

@@ -39,6 +39,11 @@ class NodeSpec:
     label: str
     kind: NodeKind
     depends_on: tuple[str, ...] = ()
+    #: False for a node with no running process to poll -- e.g. Terraform
+    #: state or the local quality-gate tooling. Its status is always
+    #: "unknown", but that is a structural fact about the node, not a check
+    #: that failed, so the UI needs to tell the two apart.
+    checkable: bool = True
 
 
 #: How long a ping may take before the node is reported down. Short on purpose:
@@ -48,17 +53,22 @@ class NodeSpec:
 PING_TIMEOUT_SECONDS = 2.0
 
 #: Node ids match the `component` vocabulary in tools/adr/adr.py, which is what
-#: lets a decision be rendered against the node it constrains (ADR-0006).
+#: lets a decision be rendered against the node it constrains (ADR-0006). The
+#: two vendor nodes are a deliberate exception: "anthropic"/"voyage" are not in
+#: that vocabulary (Voyage decisions are tagged `rag-core`, where the node for
+#: that already exists), so they simply carry no ADRs rather than colliding
+#: with an unrelated component of the same name.
 TOPOLOGY: tuple[NodeSpec, ...] = (
     NodeSpec("frontend", "Chat UI", "frontend", ("api",)),
     NodeSpec("observability", "Observability", "frontend", ("api",)),
     NodeSpec("api", "API", "service", ("rag-core", "vectorstore")),
-    NodeSpec("rag-core", "RAG Core", "service", ("vectorstore", "platform")),
+    NodeSpec("rag-core", "RAG Core", "service", ("vectorstore", "anthropic", "voyage")),
     NodeSpec("ingestion", "Ingestion", "service", ("vectorstore",)),
     NodeSpec("vectorstore", "Postgres + pgvector", "datastore"),
-    NodeSpec("platform", "Claude / Voyage", "external"),
-    NodeSpec("infra", "Infrastructure", "service"),
-    NodeSpec("tooling", "Tooling", "service"),
+    NodeSpec("anthropic", "Claude", "external"),
+    NodeSpec("voyage", "Voyage", "external"),
+    NodeSpec("infra", "Infrastructure", "service", checkable=False),
+    NodeSpec("tooling", "Tooling", "service", checkable=False),
 )
 
 
@@ -105,22 +115,46 @@ async def topology(container: ContainerDep) -> TopologyResponse:
     """The architecture graph, with live state and the ADRs constraining each node."""
     current = await health(container)
     adrs = _adrs_by_component()
+    settings = container.settings
 
     async with httpx.AsyncClient() as client:
-        # Concurrently: two sequential pings would double the API's own worst
+        # Concurrently: sequential pings would multiply the API's own worst
         # case latency for a poll that is supposed to run every few seconds.
-        frontend_ping, observability_ping = await asyncio.gather(
-            _ping(client, container.settings.frontend_url),
-            _ping(client, container.settings.observability_url),
+        frontend_ping, observability_ping, anthropic_ping, voyage_ping = await asyncio.gather(
+            _ping(client, settings.frontend_url),
+            _ping(client, settings.observability_url),
+            _ping(client, settings.anthropic_ping_url),
+            _ping(client, settings.voyage_ping_url),
         )
 
-    pings = {"frontend": frontend_ping, "observability": observability_ping}
+    pings = {
+        "frontend": frontend_ping,
+        "observability": observability_ping,
+        "anthropic": anthropic_ping,
+        "voyage": voyage_ping,
+    }
+
+    # Where a human ends up if they click the node. None where nothing is
+    # meaningfully clickable (Postgres, or a node with no running process at
+    # all -- see NodeSpec.checkable).
+    urls: dict[str, str | None] = {
+        "frontend": settings.frontend_public_url,
+        "observability": settings.observability_public_url,
+        "api": settings.api_public_url,
+        "anthropic": "https://console.anthropic.com/",
+        "voyage": "https://dashboard.voyageai.com/",
+    }
 
     nodes = []
     for spec in TOPOLOGY:
         node_id = spec.id
         latency: float | None = None
-        if node_id == "vectorstore":
+        if not spec.checkable:
+            # No running process to poll at all (Terraform state, dev
+            # tooling) -- "unknown" here is a structural fact, not a check
+            # that came back empty, which is what `checkable` tells the UI.
+            state = "unknown"
+        elif node_id == "vectorstore":
             state = "ok" if current.checks.get("database") == "ok" else "down"
         elif node_id in ("api", "rag-core", "ingestion"):
             state = current.status
@@ -129,8 +163,6 @@ async def topology(container: ContainerDep) -> TopologyResponse:
         elif node_id in pings:
             state, latency = pings[node_id]
         else:
-            # No configured way to reach this one (e.g. the external vendors):
-            # unknown rather than a guessed status.
             state = "unknown"
         nodes.append(
             ComponentNode(
@@ -141,18 +173,22 @@ async def topology(container: ContainerDep) -> TopologyResponse:
                 latency_ms=latency,
                 depends_on=list(spec.depends_on),
                 adr_refs=adrs.get(node_id, []),
+                url=urls.get(node_id),
+                checkable=spec.checkable,
             )
         )
     return TopologyResponse(nodes=nodes, generated_at=datetime.now(UTC))
 
 
 async def _ping(client: httpx.AsyncClient, url: str | None) -> tuple[str, float | None]:
-    """Check that a frontend's own web server answers.
+    """Check that something answers at `url` -- a frontend's own web server, or
+    a vendor's public status/marketing page standing in for an API that has no
+    unauthenticated health check of its own.
 
-    Not a claim that a human has the page open in a browser -- only that the
-    static server behind it is reachable, which is the same standard
-    `vectorstore` is held to: is the thing there, not is someone looking at it.
-    An unconfigured URL stays `unknown` rather than guessing.
+    Not a claim that a human has the page open in a browser, or that a Claude
+    or Voyage API key is valid -- only that the thing is reachable, which is
+    the same standard `vectorstore` is held to: is it there, not is someone
+    using it. An unconfigured URL stays `unknown` rather than guessing.
     """
     if not url:
         return "unknown", None

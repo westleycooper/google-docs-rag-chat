@@ -8,11 +8,13 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import {
   Box,
   Chip,
   CssBaseline,
   Divider,
+  IconButton,
   Link,
   List,
   ListItem,
@@ -20,6 +22,7 @@ import {
   Paper,
   Stack,
   ThemeProvider,
+  Tooltip,
   Typography,
   createTheme,
 } from '@mui/material';
@@ -177,12 +180,30 @@ export const App = () => {
                     bgcolor: selected?.id === node.id ? 'action.selected' : undefined,
                   }}
                   secondaryAction={
-                    <Chip
-                      size="small"
-                      color={STATUS_COLOUR[node.status]}
-                      label={node.status}
-                      sx={{ height: 20, fontSize: 11 }}
-                    />
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      {node.url && (
+                        <Tooltip title={`Open ${node.url}`}>
+                          <IconButton
+                            size="small"
+                            component={Link}
+                            href={node.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            sx={{ p: 0.25 }}
+                          >
+                            <OpenInNewIcon sx={{ fontSize: 14 }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      <Chip
+                        size="small"
+                        color={node.checkable ? STATUS_COLOUR[node.status] : 'default'}
+                        variant={node.checkable ? 'filled' : 'outlined'}
+                        label={node.checkable ? node.status : 'reference'}
+                        sx={{ height: 20, fontSize: 11 }}
+                      />
+                    </Stack>
                   }
                 >
                   <ListItemText
@@ -200,9 +221,25 @@ export const App = () => {
             {selected && (
               <>
                 <Divider sx={{ my: 2 }} />
-                <Typography variant="subtitle2">{selected.label}</Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Typography variant="subtitle2">{selected.label}</Typography>
+                  {selected.url && (
+                    <Link
+                      href={selected.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="caption"
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}
+                    >
+                      open <OpenInNewIcon sx={{ fontSize: 13 }} />
+                    </Link>
+                  )}
+                </Stack>
                 <Typography variant="caption" color="text.secondary" component="p">
-                  {selected.kind} · {selected.status}
+                  {selected.checkable
+                    ? selected.kind
+                    : `${selected.kind} · reference only, no live status`}
+                  {selected.checkable && ` · ${selected.status}`}
                   {selected.depends_on.length > 0 &&
                     ` · depends on ${selected.depends_on.join(', ')}`}
                 </Typography>

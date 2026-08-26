@@ -174,7 +174,12 @@ def client(request):
         # Ping URLs disabled: pinging real container-network DNS names has no
         # place in a hermetic unit test. The ping logic itself is covered by
         # test_topology_ping.py against a stub transport.
-        settings=Settings(frontend_url=None, observability_url=None),
+        settings=Settings(
+            frontend_url=None,
+            observability_url=None,
+            anthropic_ping_url=None,
+            voyage_ping_url=None,
+        ),
         engine=FakeEngine(healthy),  # type: ignore[arg-type]
         embeddings=embeddings,
         store=store,
@@ -199,7 +204,12 @@ def client_with_credentials():
     default `client` fixture's `credentials=None` can reach."""
     store, embeddings = FakeVectorStore(), FakeEmbeddingProvider()
     container = Container(
-        settings=Settings(frontend_url=None, observability_url=None),
+        settings=Settings(
+            frontend_url=None,
+            observability_url=None,
+            anthropic_ping_url=None,
+            voyage_ping_url=None,
+        ),
         engine=FakeEngine(True),  # type: ignore[arg-type]
         embeddings=embeddings,
         store=store,
@@ -278,10 +288,47 @@ def test_an_unconfigured_frontend_url_is_unknown_not_a_guess(client):
     """ADR-0006: the API pings the frontends' own servers rather than assuming
     a status it has not actually checked."""
     body = client.get("/topology").json()
-    for node_id in ("frontend", "observability"):
+    for node_id in ("frontend", "observability", "anthropic", "voyage"):
         node = next(n for n in body["nodes"] if n["id"] == node_id)
         assert node["status"] == "unknown"
         assert node["latency_ms"] is None
+
+
+def test_claude_and_voyage_are_separate_nodes(client):
+    body = client.get("/topology").json()
+    ids = {n["id"] for n in body["nodes"]}
+    assert {"anthropic", "voyage"} <= ids
+    assert "platform" not in ids
+    rag_core = next(n for n in body["nodes"] if n["id"] == "rag-core")
+    assert {"anthropic", "voyage"} <= set(rag_core["depends_on"])
+
+
+def test_infra_and_tooling_are_marked_not_checkable(client):
+    """They have no running process to poll -- a Terraform state and a set of
+    dev-time quality gates aren't services. `checkable=False` is how the
+    topology tells "no live check exists" apart from "we checked and don't
+    know", both of which would otherwise render as the same grey 'unknown'."""
+    body = client.get("/topology").json()
+    for node_id in ("infra", "tooling"):
+        node = next(n for n in body["nodes"] if n["id"] == node_id)
+        assert node["checkable"] is False
+        assert node["status"] == "unknown"
+
+    for node_id in ("frontend", "api", "vectorstore", "anthropic", "voyage"):
+        node = next(n for n in body["nodes"] if n["id"] == node_id)
+        assert node["checkable"] is True
+
+
+def test_topology_nodes_carry_a_clickable_url_where_one_exists(client):
+    body = client.get("/topology").json()
+    nodes = {n["id"]: n for n in body["nodes"]}
+    assert nodes["frontend"]["url"] == "http://localhost:5173"
+    assert nodes["observability"]["url"] == "http://localhost:5174"
+    assert nodes["api"]["url"] == "http://localhost:8000/docs"
+    assert nodes["anthropic"]["url"] == "https://console.anthropic.com/"
+    assert nodes["voyage"]["url"] == "https://dashboard.voyageai.com/"
+    # Postgres isn't something a human browses to.
+    assert nodes["vectorstore"]["url"] is None
 
 
 # -- sources --------------------------------------------------------------

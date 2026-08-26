@@ -47,6 +47,19 @@ class ComponentNode(BaseModel):
         description="ADRs whose `component` field maps to this node, so a "
         "decision can be rendered against the thing it constrains.",
     )
+    url: str | None = Field(
+        default=None,
+        description="Where a human can go look at this component -- a "
+        "browser-reachable origin, a vendor dashboard. None when nothing is "
+        "meaningfully clickable (e.g. Postgres).",
+    )
+    checkable: bool = Field(
+        default=True,
+        description="Whether `status` reflects an actual live check. False "
+        "marks a documentation-only node (e.g. infra, tooling) that has no "
+        "running process to poll -- its `status` is always 'unknown', but "
+        "that is a structural fact, not a failed check.",
+    )
 
 
 class TopologyResponse(BaseModel):
