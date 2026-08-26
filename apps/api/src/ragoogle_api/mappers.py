@@ -34,6 +34,7 @@ from ragoogle_core.ingestion.run import IngestionRun
 from ragoogle_core.ingestion.skip import SkipRecord
 from ragoogle_core.ingestion.source import SourceConfig
 from ragoogle_core.observability.trace import TraceEvent
+from ragoogle_core.ports.repositories import DatasetSummary
 from ragoogle_core.retrieval.citation import Citation
 
 #: How much of a chunk travels to the client with a citation. Enough to show why
@@ -175,14 +176,27 @@ def case_out(case: Case) -> CaseOut:
     )
 
 
-def dataset_out(dataset: Dataset, *, with_cases: bool = True) -> DatasetOut:
+def dataset_out(dataset: Dataset) -> DatasetOut:
     return DatasetOut(
         dataset_id=str(dataset.dataset_id),
         name=dataset.name,
         version=dataset.version,
         description=dataset.description,
         case_count=len(dataset),
-        cases=[case_out(c) for c in dataset.cases] if with_cases else [],
+        cases=[case_out(c) for c in dataset.cases],
+    )
+
+
+def dataset_summary_out(summary: DatasetSummary) -> DatasetOut:
+    """An index row. `cases` is empty because none were loaded, and
+    `case_count` is a real count rather than the length of that empty list."""
+    return DatasetOut(
+        dataset_id=str(summary.dataset_id),
+        name=summary.name,
+        version=summary.version,
+        description=summary.description,
+        case_count=summary.case_count,
+        cases=[],
     )
 
 

@@ -31,10 +31,56 @@ const STATUS_PULSE: Record<NodeStatus, number> = {
 };
 
 const TIER_Y: Record<string, number> = {
-  frontend: 2.4,
-  service: 0,
-  datastore: -2.4,
-  external: -2.4,
+  frontend: 2.7,
+  service: 0.6,
+  datastore: -1.5,
+  external: -3.4,
+};
+
+/**
+ * A node label as a sprite.
+ *
+ * Canvas-texture sprites rather than a text geometry: they always face the
+ * camera, need no font loading, and stay crisp because the texture is drawn at
+ * device resolution. An unlabelled architecture graph is decorative -- you
+ * cannot tell which sphere just went red.
+ */
+const makeLabel = (text: string, colour: string): THREE.Sprite => {
+  const scale = 2;
+  const font = `600 ${28 * scale}px Inter, -apple-system, sans-serif`;
+  const measure = document.createElement('canvas').getContext('2d');
+  if (measure) measure.font = font;
+  const width = Math.ceil((measure?.measureText(text).width ?? text.length * 16) + 24 * scale);
+  const height = 44 * scale;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // A rounded plate behind the text so a label crossing an edge line stays
+    // readable.
+    ctx.fillStyle = 'rgba(11, 15, 25, 0.82)';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, width, height, 10 * scale);
+    ctx.fill();
+    ctx.fillStyle = colour;
+    ctx.fillText(text, width / 2, height / 2 + 2);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }),
+  );
+  // Sized in world units so a label stays proportional to its node rather
+  // than to the canvas resolution.
+  const worldHeight = 0.26;
+  sprite.scale.set((width / height) * worldHeight, worldHeight, 1);
+  return sprite;
 };
 
 interface Props {
@@ -62,7 +108,8 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const scene = new THREE.Scene();
     scene.fog = new THREE.Fog(0x0b0f19, 12, 30);
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-    camera.position.set(0, 0.5, 11);
+    camera.position.set(0, -0.3, 12.5);
+    camera.lookAt(0, -0.3, 0);
 
     let renderer: THREE.WebGLRenderer;
     try {
@@ -90,12 +137,10 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const positions = new Map<string, THREE.Vector3>();
     for (const [tier, members] of byTier) {
       const y = TIER_Y[tier] ?? 0;
-      // Datastores and externals share a tier, so offset externals forward to
-      // keep them visually distinct without a fourth row.
-      const z = tier === 'external' ? -1.6 : 0;
+      const z = 0;
       const span = Math.max(members.length - 1, 1);
       members.forEach((node, i) => {
-        const x = members.length === 1 ? 0 : (i / span - 0.5) * 8;
+        const x = members.length === 1 ? 0 : (i / span - 0.5) * 8.4;
         positions.set(node.id, new THREE.Vector3(x, y, z));
       });
     }
@@ -161,6 +206,10 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
         pulsing.push({ mesh, rate, base: 0.35 });
       }
 
+      const label = makeLabel(node.label, node.status === 'unknown' ? '#94a3b8' : '#e2e8f0');
+      label.position.set(position.x, position.y - 0.82, position.z);
+      group.add(label);
+
       if (node.id === selectedId) {
         const ring = new THREE.Mesh(
           new THREE.TorusGeometry(0.85, 0.03, 12, 40),
@@ -195,7 +244,8 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
           base + 0.45 * (0.5 + 0.5 * Math.sin(elapsed * rate * Math.PI * 2));
       }
       if (!reduceMotion) {
-        group.rotation.y = Math.sin(elapsed * 0.12) * 0.22;
+        // A gentle sway gives depth cues; kept small so labels stay legible.
+        group.rotation.y = Math.sin(elapsed * 0.1) * 0.06;
       }
       renderer.render(scene, camera);
       frame = requestAnimationFrame(render);
@@ -222,6 +272,11 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
           const material = object.material;
           if (Array.isArray(material)) material.forEach((m) => m.dispose());
           else material.dispose();
+        } else if (object instanceof THREE.Sprite) {
+          // Sprites are not Meshes: without this branch every poll leaks a
+          // canvas texture, and the topology polls every three seconds.
+          object.material.map?.dispose();
+          object.material.dispose();
         }
       });
       renderer.dispose();

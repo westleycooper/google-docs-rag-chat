@@ -8,6 +8,7 @@ a repository that can do anything is a repository that constrains nothing.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from ragoogle_core.evaluation.dataset import Dataset
@@ -71,6 +72,17 @@ class RunJournal(Protocol):
         ...
 
 
+@dataclass(frozen=True, slots=True)
+class DatasetSummary:
+    """A dataset as an index row: enough to list and choose, no cases loaded."""
+
+    dataset_id: DatasetId
+    name: str
+    version: int
+    case_count: int
+    description: str | None = None
+
+
 @runtime_checkable
 class EvaluationStore(Protocol):
     """Datasets and their runs (ADR-0010)."""
@@ -87,12 +99,14 @@ class EvaluationStore(Protocol):
         """Load a dataset. Without a version, the latest."""
         ...
 
-    async def list_datasets(self) -> list[Dataset]:
-        """The latest version of every dataset, without its cases.
+    async def list_datasets(self) -> list[DatasetSummary]:
+        """The latest version of every dataset, as a read model.
 
-        Cases are omitted because the listing feeds a config-page index, and
+        Deliberately not `Dataset`: the listing feeds a config-page index, and
         loading every case of every dataset to render a list of names is work
-        nobody asked for.
+        nobody asked for. Returning a half-populated aggregate instead would be
+        worse -- a `Dataset` with an empty `cases` tuple reports `len() == 0`,
+        which is indistinguishable from a dataset that genuinely has none.
         """
         ...
 

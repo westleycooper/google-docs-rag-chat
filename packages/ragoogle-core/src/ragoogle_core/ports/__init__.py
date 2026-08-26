@@ -20,6 +20,7 @@ from ragoogle_core.ports.document_source import (
 from ragoogle_core.ports.embedding import EmbeddingProvider
 from ragoogle_core.ports.judge import AnswerJudge
 from ragoogle_core.ports.repositories import (
+    DatasetSummary,
     DocumentCatalogue,
     EvaluationStore,
     RunJournal,
@@ -33,6 +34,7 @@ __all__ = [
     "AnswerJudge",
     "ChatModel",
     "CredentialStore",
+    "DatasetSummary",
     "DocumentCatalogue",
     "DocumentSource",
     "EmbeddingProvider",

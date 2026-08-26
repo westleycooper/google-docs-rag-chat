@@ -19,6 +19,7 @@ from ragoogle_core.evaluation.run import (
     EvaluationState,
     GenerationScore,
 )
+from ragoogle_core.ports.repositories import DatasetSummary
 from ragoogle_core.shared.errors import NotFound
 from ragoogle_core.shared.identifiers import CaseId, ChunkId, DatasetId, RunId
 
@@ -126,23 +127,28 @@ class PgEvaluationStore:
             metadata=dict(row.metadata_json or {}),
         )
 
-    async def list_datasets(self) -> list[Dataset]:
+    async def list_datasets(self) -> list[DatasetSummary]:
         async with self._engine.connect() as conn:
             result = await conn.execute(
                 text(
                     """
-                    SELECT DISTINCT ON (id) *
-                    FROM eval_datasets ORDER BY id, version DESC
+                    SELECT DISTINCT ON (d.id)
+                           d.id, d.name, d.version, d.description,
+                           (SELECT count(*) FROM eval_cases c
+                             WHERE c.dataset_id = d.id
+                               AND c.dataset_version = d.version) AS case_count
+                    FROM eval_datasets d
+                    ORDER BY d.id, d.version DESC
                     """
                 )
             )
             return [
-                Dataset(
+                DatasetSummary(
                     dataset_id=DatasetId(row.id),
                     name=row.name,
                     version=row.version,
+                    case_count=row.case_count,
                     description=row.description,
-                    metadata=dict(row.metadata_json or {}),
                 )
                 for row in result
             ]

@@ -24,6 +24,8 @@
 infra/**/.terraform
 infra/**/*.tfstate*
 
+# Excluded from the image only; both are tracked in git and the README
+# renders them on GitHub.
 docs/screenshots
 **/*.md
 !README.md

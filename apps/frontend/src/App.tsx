@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import ChatIcon from '@mui/icons-material/Chat';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
@@ -32,7 +33,12 @@ export const App = () => {
   const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
   const [mode, setMode] = useState<'light' | 'dark'>(prefersDark ? 'dark' : 'light');
   const theme = useMemo(() => buildTheme(mode), [mode]);
-  const [tab, setTab] = useState(0);
+  // Tabs are routes, not local state. A configuration page nobody can link to
+  // is a page nobody can point a colleague at, and a reload should not silently
+  // send you back to the chat.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const tab = location.pathname.startsWith('/configuration') ? 1 : 0;
 
   const dispatch = useAppDispatch();
   const modelId = useAppSelector((s) => s.session.modelId);
@@ -48,7 +54,11 @@ export const App = () => {
               Ragoogle
             </Typography>
 
-            <Tabs value={tab} onChange={(_, v: number) => setTab(v)} sx={{ minHeight: 0 }}>
+            <Tabs
+              value={tab}
+              onChange={(_, v: number) => navigate(v === 1 ? '/configuration' : '/')}
+              sx={{ minHeight: 0 }}
+            >
               <Tab
                 icon={<ChatIcon fontSize="small" />}
                 iconPosition="start"
@@ -71,7 +81,15 @@ export const App = () => {
               label="Model"
               value={modelId ?? models[0]?.model_id ?? ''}
               onChange={(e) => dispatch(modelSelected(e.target.value))}
-              sx={{ minWidth: 190 }}
+              disabled={models.length === 0}
+              // An empty select reads as a broken control. The model list comes
+              // from the Models API, so it is empty precisely when no Anthropic
+              // credential is configured -- say that instead.
+              helperText={models.length === 0 ? 'No ANTHROPIC_API_KEY' : undefined}
+              sx={{
+                minWidth: 190,
+                '& .MuiFormHelperText-root': { mt: 0, fontSize: 10 },
+              }}
             >
               {models.map((model) => (
                 <MenuItem key={model.model_id} value={model.model_id}>
@@ -90,23 +108,33 @@ export const App = () => {
         </AppBar>
 
         <Box sx={{ flex: 1, overflow: 'hidden', p: 2 }}>
-          {tab === 0 ? (
-            <Grid container spacing={2} sx={{ height: '100%' }}>
-              <Grid size={{ xs: 12, md: 8 }} sx={{ height: '100%' }}>
-                <ChatView />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }} sx={{ height: '100%', overflowY: 'auto' }}>
-                <ContextPanel />
-              </Grid>
-            </Grid>
-          ) : (
-            <Box sx={{ height: '100%', overflowY: 'auto', maxWidth: 900 }}>
-              <Stack spacing={4}>
-                <SourcesPanel />
-                <EvalsPanel />
-              </Stack>
-            </Box>
-          )}
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Grid container spacing={2} sx={{ height: '100%' }}>
+                  <Grid size={{ xs: 12, md: 8 }} sx={{ height: '100%' }}>
+                    <ChatView />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }} sx={{ height: '100%', overflowY: 'auto' }}>
+                    <ContextPanel />
+                  </Grid>
+                </Grid>
+              }
+            />
+            <Route
+              path="/configuration"
+              element={
+                <Box sx={{ height: '100%', overflowY: 'auto', maxWidth: 900 }}>
+                  <Stack spacing={4}>
+                    <SourcesPanel />
+                    <EvalsPanel />
+                  </Stack>
+                </Box>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </Box>
       </Box>
     </ThemeProvider>

@@ -140,13 +140,14 @@ async def test_an_unknown_dataset_raises_not_found(store):
         await store.get_dataset(DatasetId.new())
 
 
-async def test_the_listing_omits_cases(store):
-    """Loading every case to render a list of names is work nobody asked for."""
-    await track(store, dataset(case(), case(question="second?")))
-    listed = await store.list_datasets()
-    mine = [d for d in listed if d.dataset_id in store._created]
-    assert mine
-    assert all(len(d) == 0 for d in mine)
+async def test_the_listing_counts_cases_without_loading_them(store):
+    """Loading every case to render a list of names is work nobody asked for --
+    but reporting zero would be worse, since the UI gates on that count."""
+    ds = await track(store, dataset(case(), case(question="second?")))
+    mine = [d for d in await store.list_datasets() if d.dataset_id == ds.dataset_id]
+    assert len(mine) == 1
+    assert mine[0].case_count == 2
+    assert not hasattr(mine[0], "cases")
 
 
 async def test_the_listing_shows_only_the_latest_version(store):

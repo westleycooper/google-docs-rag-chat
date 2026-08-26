@@ -14,7 +14,11 @@ import logging
 from fastapi import APIRouter, HTTPException, Query, status
 
 from ragoogle_api.deps import Container, ContainerDep
-from ragoogle_api.mappers import dataset_out, evaluation_run_out
+from ragoogle_api.mappers import (
+    dataset_out,
+    dataset_summary_out,
+    evaluation_run_out,
+)
 from ragoogle_api.schemas import (
     CaseIn,
     DatasetIn,
@@ -58,7 +62,7 @@ def _parse(dataset_id: str) -> DatasetId:
 @router.get("/datasets", operation_id="listDatasets", response_model=list[DatasetOut])
 async def list_datasets(container: ContainerDep) -> list[DatasetOut]:
     """Every dataset's latest version, without its cases."""
-    return [dataset_out(d, with_cases=False) for d in await _store(container).list_datasets()]
+    return [dataset_summary_out(d) for d in await _store(container).list_datasets()]
 
 
 @router.post(

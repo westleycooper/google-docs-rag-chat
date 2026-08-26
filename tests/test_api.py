@@ -81,12 +81,23 @@ class FakeEvaluationStore:
         return self.datasets[(dataset_id, chosen)]
 
     async def list_datasets(self):
+        from ragoogle_core.ports import DatasetSummary
+
         latest: dict[object, object] = {}
         for (dataset_id, version), dataset in self.datasets.items():
             current = latest.get(dataset_id)
             if current is None or version > current.version:
                 latest[dataset_id] = dataset
-        return list(latest.values())
+        return [
+            DatasetSummary(
+                dataset_id=d.dataset_id,
+                name=d.name,
+                version=d.version,
+                case_count=len(d),
+                description=d.description,
+            )
+            for d in latest.values()
+        ]
 
     async def save_run(self, run) -> None:
         self.runs[run.run_id] = run
@@ -421,14 +432,17 @@ def test_a_blank_dataset_name_is_rejected(client):
     assert client.post("/evals/datasets", json={"name": "  "}).status_code == 422
 
 
-def test_datasets_are_listed_without_their_cases(client):
+def test_the_listing_omits_case_bodies_but_counts_them(client):
+    """A listing reporting 0 cases for a dataset that has some would disable the
+    Run button for a dataset that is perfectly runnable."""
     created = make_dataset(client)
     client.post(
         f"/evals/datasets/{created['dataset_id']}/cases",
         json={"question": "What happened to revenue?"},
     )
     listed = client.get("/evals/datasets").json()
-    assert listed[0]["case_count"] == 0 or listed[0]["cases"] == []
+    assert listed[0]["case_count"] == 1
+    assert listed[0]["cases"] == []
 
 
 def test_adding_a_case_forks_the_version(client):

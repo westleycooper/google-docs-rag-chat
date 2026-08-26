@@ -55,7 +55,13 @@ const RunSummary = ({ sourceId }: { sourceId: string }) => {
     // second transport just for this.
     query: { refetchInterval: 5000 },
   });
-  if (!run) return <Typography variant="caption">Never run</Typography>;
+  if (!run) {
+    return (
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+        Never run
+      </Typography>
+    );
+  }
 
   const actionable = run.skips.filter((s) => s.actionable);
 
@@ -158,7 +164,7 @@ export const SourcesPanel = () => {
           <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="subtitle2">{source.name}</Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" display="block">
                 {source.provider} · {source.auth_mode.replace(/_/g, ' ')} · as{' '}
                 {source.principal}
               </Typography>
