@@ -26,27 +26,41 @@ import {
 import { TopologyScene } from '@/components/TopologyScene';
 import { fetchTopology, type ComponentNode, type NodeStatus, type Topology } from '@/api/topology';
 
-// The same Wes Anderson family as the chat app's dark mode (see
-// apps/frontend/src/theme.ts) -- velvet maroon rather than navy-black, dusty
-// teal and mustard rather than indigo. Duplicated by hex value rather than
-// imported: the two apps are independent packages with no shared design-tokens
-// package between them, and one flat file of colour constants is not worth
-// introducing a workspace dependency for.
+// The chat app's default preset -- Retro Teal (see apps/frontend/src/theme.ts)
+// -- duplicated by hex value rather than imported: the two apps are
+// independent packages with no shared design-tokens package between them, and
+// one flat file of colour constants is not worth introducing a workspace
+// dependency for. Unlike the chat app, this page has no picker: it is a
+// single-purpose live dashboard, not a surface where "make a choice" belongs,
+// so it always renders in the product's default look.
+const APP_BAR_GRADIENT = 'linear-gradient(90deg, #071613 0%, #0F3A33 50%, #071613 100%)';
+const BODY_SCANLINES =
+  'repeating-linear-gradient(180deg, rgba(45, 212, 191, 0.05) 0px, ' +
+  'rgba(45, 212, 191, 0.05) 1px, transparent 1px, transparent 6px)';
+
 const theme = createTheme({
   palette: {
     mode: 'dark',
-    background: { default: '#241417', paper: '#331C20' },
-    primary: { main: '#6FB3AC' },
-    secondary: { main: '#C08A2E' },
-    error: { main: '#D2603A' },
-    warning: { main: '#E3B23C' },
-    success: { main: '#8FBF7A' },
-    text: { primary: '#F2E8D5', secondary: '#C9B79E' },
+    background: { default: '#071613', paper: '#0D211C' },
+    primary: { main: '#2DD4BF' },
+    secondary: { main: '#2DD4BF' },
+    error: { main: '#F97362' },
+    warning: { main: '#FBBF24' },
+    success: { main: '#34D399' },
+    info: { main: '#22D3EE' },
+    text: { primary: '#E4FFFB', secondary: '#8FBDB4' },
   },
   shape: { borderRadius: 10 },
   typography: {
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif',
     button: { textTransform: 'none' },
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: { backgroundImage: BODY_SCANLINES, backgroundAttachment: 'fixed' },
+      },
+    },
   },
 });
 
@@ -100,7 +114,13 @@ export const App = () => {
           direction="row"
           spacing={2}
           alignItems="center"
-          sx={{ px: 3, py: 1.5, borderBottom: 1, borderColor: 'divider' }}
+          sx={{
+            px: 3,
+            py: 1.5,
+            borderBottom: 1,
+            borderColor: 'divider',
+            backgroundImage: APP_BAR_GRADIENT,
+          }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             RAGDrive · Architecture

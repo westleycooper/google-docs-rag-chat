@@ -25,13 +25,14 @@ import {
   TableRow,
   Tooltip,
   Typography,
+  useTheme,
 } from '@mui/material';
 import { ContextMeter } from './ContextMeter';
-import { CONTEXT_COLOURS } from '@/theme';
 import { contextItemDropped } from '@/store/sessionSlice';
 import { useAppDispatch, useAppSelector } from '@/store';
 
 export const ContextPanel = () => {
+  const theme = useTheme();
   const dispatch = useAppDispatch();
   const budget = useAppSelector((s) => s.session.budget);
   const degraded = useAppSelector((s) => s.session.degraded);
@@ -101,8 +102,8 @@ export const ContextPanel = () => {
                 label={`${segment.context_class} ${segment.token_count.toLocaleString()}`}
                 sx={{
                   bgcolor:
-                    CONTEXT_COLOURS[
-                      segment.context_class as keyof typeof CONTEXT_COLOURS
+                    theme.contextColours[
+                      segment.context_class as keyof typeof theme.contextColours
                     ],
                   color: '#fff',
                   height: 20,

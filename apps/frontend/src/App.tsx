@@ -1,15 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import ChatIcon from '@mui/icons-material/Chat';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import LightModeIcon from '@mui/icons-material/LightMode';
+import PaletteIcon from '@mui/icons-material/Palette';
 import SettingsIcon from '@mui/icons-material/Settings';
 import {
   AppBar,
   Box,
   CssBaseline,
   Grid,
-  IconButton,
   MenuItem,
   Stack,
   Tab,
@@ -18,7 +16,6 @@ import {
   ThemeProvider,
   Toolbar,
   Typography,
-  useMediaQuery,
 } from '@mui/material';
 import { ChatView } from '@/features/chat/ChatView';
 import { ContextPanel } from '@/features/context/ContextPanel';
@@ -27,12 +24,25 @@ import { SourcesPanel } from '@/features/config/SourcesPanel';
 import { useListModels } from '@/api/generated/models/models';
 import { modelSelected } from '@/store/sessionSlice';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { buildTheme } from '@/theme';
+import {
+  buildTheme,
+  loadStoredThemeId,
+  storeThemeId,
+  THEME_IDS,
+  THEME_PRESETS,
+  type ThemeId,
+} from '@/theme';
 
 export const App = () => {
-  const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
-  const [mode, setMode] = useState<'light' | 'dark'>(prefersDark ? 'dark' : 'light');
-  const theme = useMemo(() => buildTheme(mode), [mode]);
+  // Lazy initial state, so the very first render already reflects a persisted
+  // choice rather than flashing the default theme for one frame.
+  const [themeId, setThemeId] = useState<ThemeId>(loadStoredThemeId);
+  const theme = useMemo(() => buildTheme(themeId), [themeId]);
+
+  const selectThemeId = (id: ThemeId) => {
+    setThemeId(id);
+    storeThemeId(id);
+  };
   // Tabs are routes, not local state. A configuration page nobody can link to
   // is a page nobody can point a colleague at, and a reload should not silently
   // send you back to the chat.
@@ -48,7 +58,17 @@ export const App = () => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <AppBar position="static" color="default" variant="outlined" elevation={0}>
+        <AppBar
+          position="static"
+          color="default"
+          variant="outlined"
+          elevation={0}
+          sx={
+            theme.appBarBackground
+              ? { backgroundImage: theme.appBarBackground }
+              : undefined
+          }
+        >
           {/* dense is 48px; 50% taller is 72px, set explicitly rather than
               relying on a variant whose baseline could change under us. */}
           <Toolbar variant="dense" sx={{ gap: 2, minHeight: 72 }}>
@@ -100,12 +120,27 @@ export const App = () => {
               ))}
             </TextField>
 
-            <IconButton
-              onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
-              aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
+            <TextField
+              select
+              size="small"
+              label="Theme"
+              value={themeId}
+              onChange={(e) => selectThemeId(e.target.value as ThemeId)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <PaletteIcon fontSize="small" sx={{ mr: 1, opacity: 0.7 }} />
+                  ),
+                },
+              }}
+              sx={{ minWidth: 200 }}
             >
-              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
-            </IconButton>
+              {THEME_IDS.map((id) => (
+                <MenuItem key={id} value={id}>
+                  {THEME_PRESETS[id].label}
+                </MenuItem>
+              ))}
+            </TextField>
           </Toolbar>
         </AppBar>
 

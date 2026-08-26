@@ -17,7 +17,6 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Box, useTheme } from '@mui/material';
 import type { BudgetOut } from '@/api/generated/model';
-import { CONTEXT_COLOURS } from '@/theme';
 
 const CLASS_ORDER = ['system', 'pinned', 'history', 'retrieved'] as const;
 
@@ -90,7 +89,7 @@ export const ContextMeter = ({ budget, height = 220, onSelect }: Props) => {
       );
 
       const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(CONTEXT_COLOURS[className]),
+        color: new THREE.Color(theme.contextColours[className]),
         roughness: 0.45,
         metalness: 0.1,
         transparent: true,
@@ -189,7 +188,7 @@ export const ContextMeter = ({ budget, height = 220, onSelect }: Props) => {
         mount.removeChild(renderer.domElement);
       }
     };
-  }, [budget, height, theme.palette.text.disabled, theme.palette.error.main]);
+  }, [budget, height, theme.palette.text.disabled, theme.palette.error.main, theme.contextColours]);
 
   return (
     <Box
