@@ -26,11 +26,22 @@ import {
 import { TopologyScene } from '@/components/TopologyScene';
 import { fetchTopology, type ComponentNode, type NodeStatus, type Topology } from '@/api/topology';
 
+// The same Wes Anderson family as the chat app's dark mode (see
+// apps/frontend/src/theme.ts) -- velvet maroon rather than navy-black, dusty
+// teal and mustard rather than indigo. Duplicated by hex value rather than
+// imported: the two apps are independent packages with no shared design-tokens
+// package between them, and one flat file of colour constants is not worth
+// introducing a workspace dependency for.
 const theme = createTheme({
   palette: {
     mode: 'dark',
-    background: { default: '#0b0f19', paper: '#121826' },
-    primary: { main: '#818cf8' },
+    background: { default: '#241417', paper: '#331C20' },
+    primary: { main: '#6FB3AC' },
+    secondary: { main: '#C08A2E' },
+    error: { main: '#D2603A' },
+    warning: { main: '#E3B23C' },
+    success: { main: '#8FBF7A' },
+    text: { primary: '#F2E8D5', secondary: '#C9B79E' },
   },
   shape: { borderRadius: 10 },
   typography: {

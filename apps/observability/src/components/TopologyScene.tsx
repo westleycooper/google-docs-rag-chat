@@ -15,11 +15,14 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import type { ComponentNode, NodeStatus } from '@/api/topology';
 
+// The same Wes Anderson family as App.tsx's MUI theme and the chat app's
+// palette (apps/frontend/src/theme.ts): sage, mustard, brick red, warm taupe --
+// dusty and desaturated rather than the stock traffic-light red/amber/green.
 const STATUS_COLOURS: Record<NodeStatus, number> = {
-  ok: 0x10b981,
-  degraded: 0xf59e0b,
-  down: 0xef4444,
-  unknown: 0x4b5563,
+  ok: 0x8fbf7a,
+  degraded: 0xe3b23c,
+  down: 0xd2603a,
+  unknown: 0x6e5f4c,
 };
 
 /** Pulses per second. Healthy is still; trouble draws the eye. */
@@ -106,7 +109,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const height = mount.clientHeight || 500;
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x0b0f19, 12, 30);
+    scene.fog = new THREE.Fog(0x241417, 12, 30); // velvet maroon, matching the MUI background
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
     camera.position.set(0, -0.3, 12.5);
     camera.lookAt(0, -0.3, 0);
@@ -119,7 +122,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x0b0f19, 1);
+    renderer.setClearColor(0x241417, 1);
     mount.appendChild(renderer.domElement);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.6));
@@ -159,7 +162,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
         const line = new THREE.Line(
           geometry,
           new THREE.LineBasicMaterial({
-            color: 0x334155,
+            color: 0x5a4038, // dusty maroon-brown, dim against the velvet background
             transparent: true,
             opacity: 0.6,
           }),
@@ -206,14 +209,14 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
         pulsing.push({ mesh, rate, base: 0.35 });
       }
 
-      const label = makeLabel(node.label, node.status === 'unknown' ? '#94a3b8' : '#e2e8f0');
+      const label = makeLabel(node.label, node.status === 'unknown' ? '#C9B79E' : '#F2E8D5');
       label.position.set(position.x, position.y - 0.82, position.z);
       group.add(label);
 
       if (node.id === selectedId) {
         const ring = new THREE.Mesh(
           new THREE.TorusGeometry(0.85, 0.03, 12, 40),
-          new THREE.MeshBasicMaterial({ color: 0x818cf8 }),
+          new THREE.MeshBasicMaterial({ color: 0x6fb3ac }), // dusty teal, matches MUI primary
         );
         ring.position.copy(position);
         group.add(ring);

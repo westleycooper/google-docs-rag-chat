@@ -96,8 +96,10 @@ export const ContextMeter = ({ budget, height = 220, onSelect }: Props) => {
         transparent: true,
         opacity: 0.92,
         // The eviction frontier glows: what is about to be lost should draw the
-        // eye before it is lost, which is the entire point of ADR-0008.
-        emissive: new THREE.Color(atRisk ? '#ef4444' : '#000000'),
+        // eye before it is lost, which is the entire point of ADR-0008. Pulled
+        // from the theme's error colour rather than hardcoded, so it stays in
+        // the palette's family (brick red, not fire-engine red) in both modes.
+        emissive: new THREE.Color(atRisk ? theme.palette.error.main : '#000000'),
         emissiveIntensity: atRisk ? 0.5 : 0,
       });
 
@@ -187,7 +189,7 @@ export const ContextMeter = ({ budget, height = 220, onSelect }: Props) => {
         mount.removeChild(renderer.domElement);
       }
     };
-  }, [budget, height, theme.palette.text.disabled]);
+  }, [budget, height, theme.palette.text.disabled, theme.palette.error.main]);
 
   return (
     <Box
