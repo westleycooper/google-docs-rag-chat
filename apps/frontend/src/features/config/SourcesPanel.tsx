@@ -50,6 +50,41 @@ import type { SourceIn, SourceOut } from '@/api/generated/model';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
+type DialogMode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; sourceId: string };
+
+const OAUTH_DRAFT_STORAGE_KEY = 'ragdrive:oauth-draft';
+
+interface PersistedOAuthDraft {
+  draft: SourceIn;
+  dialog: DialogMode;
+}
+
+/**
+ * `window.location.href` to Google is a real navigation, not a fetch -- every
+ * bit of component state, including whatever the user had already typed, is
+ * gone by the time the browser lands back on `/configuration`. sessionStorage
+ * is the only thing that survives the round trip, so the in-progress draft is
+ * stashed here just before leaving and restored once back, on both the
+ * success and error outcomes.
+ */
+const persistDraftForOAuthRedirect = (draft: SourceIn, dialog: DialogMode): void => {
+  try {
+    window.sessionStorage.setItem(OAUTH_DRAFT_STORAGE_KEY, JSON.stringify({ draft, dialog }));
+  } catch {
+    /* storage unavailable -- the round trip just won't restore the draft */
+  }
+};
+
+const consumePersistedOAuthDraft = (): PersistedOAuthDraft | null => {
+  try {
+    const raw = window.sessionStorage.getItem(OAUTH_DRAFT_STORAGE_KEY);
+    window.sessionStorage.removeItem(OAUTH_DRAFT_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as PersistedOAuthDraft) : null;
+  } catch {
+    return null;
+  }
+};
+
 const EMPTY: SourceIn = {
   name: '',
   provider: 'google_drive',
@@ -127,8 +162,6 @@ const RunSummary = ({ sourceId }: { sourceId: string }) => {
   );
 };
 
-type DialogMode = { kind: 'closed' } | { kind: 'create' } | { kind: 'edit'; sourceId: string };
-
 export const SourcesPanel = () => {
   const { data: sources = [], refetch } = useListSources();
   const create = useCreateSource();
@@ -155,19 +188,28 @@ export const SourcesPanel = () => {
     const status = searchParams.get('oauth_status');
     if (!status) return;
 
+    const persisted = consumePersistedOAuthDraft();
+
     if (status === 'error') {
+      // The dialog the user was in is reopened -- not just left closed -- for
+      // two reasons: this Alert only renders inside DialogContent below, so a
+      // closed dialog means the error is set but never seen, and whatever the
+      // user had already typed (persisted just before the redirect) would
+      // otherwise be silently lost along with the failed connection attempt.
       setError(searchParams.get('message') ?? 'Google Drive connection failed');
+      setDraft(persisted?.draft ?? EMPTY);
+      setDialog(persisted?.dialog ?? { kind: 'create' });
     } else if (status === 'connected') {
       const principal = searchParams.get('principal') ?? '';
       const credentialRef = searchParams.get('credential_ref') ?? '';
       const editingSourceId = searchParams.get('editing_source_id');
       setNotice(`Connected as ${principal}`);
-      setDraft((current) => ({
-        ...current,
+      setDraft({
+        ...(persisted?.draft ?? EMPTY),
         auth_mode: 'oauth',
         principal,
         credential_ref: credentialRef,
-      }));
+      });
       setDialog(editingSourceId ? { kind: 'edit', sourceId: editingSourceId } : { kind: 'create' });
     }
     setSearchParams((params) => {
@@ -215,6 +257,7 @@ export const SourcesPanel = () => {
   };
 
   const connectGoogleDrive = () => {
+    persistDraftForOAuthRedirect(draft, dialog);
     const returnPath = '/configuration';
     const editingParam = dialog.kind === 'edit' ? `&editing_source_id=${dialog.sourceId}` : '';
     window.location.href =

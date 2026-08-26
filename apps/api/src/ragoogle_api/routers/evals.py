@@ -56,6 +56,15 @@ def _parse(dataset_id: str) -> DatasetId:
         ) from error
 
 
+def _parse_case(case_id: str) -> CaseId:
+    try:
+        return CaseId.parse(case_id)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=422, detail=f"{case_id!r} is not a valid case id"
+        ) from error
+
+
 # -- datasets -------------------------------------------------------------
 
 
@@ -132,6 +141,66 @@ async def add_case(dataset_id: str, payload: CaseIn, container: ContainerDep) ->
         )
         forked = dataset.with_case(case)
     except (DomainError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    await store.save_dataset(forked)
+    return dataset_out(forked)
+
+
+@router.put(
+    "/datasets/{dataset_id}/cases/{case_id}",
+    operation_id="updateCase",
+    response_model=DatasetOut,
+)
+async def update_case(
+    dataset_id: str, case_id: str, payload: CaseIn, container: ContainerDep
+) -> DatasetOut:
+    """Replace a case's content, forking the dataset version.
+
+    The case keeps its identity; a run scored against the old wording is not
+    comparable to one scored against the new, so this forks rather than
+    mutating the case in place (mirrors `add_case`).
+    """
+    store = _store(container)
+    try:
+        dataset = await store.get_dataset(_parse(dataset_id))
+    except NotFound as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    try:
+        case = Case(
+            case_id=_parse_case(case_id),
+            question=payload.question,
+            expected_answer=payload.expected_answer,
+            expected_chunk_ids=frozenset(ChunkId.parse(c) for c in payload.expected_chunk_ids),
+            tags=tuple(payload.tags),
+            source_turn_id=payload.source_turn_id,
+            notes=payload.notes,
+        )
+        forked = dataset.with_case_updated(case)
+    except (DomainError, ValueError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    await store.save_dataset(forked)
+    return dataset_out(forked)
+
+
+@router.delete(
+    "/datasets/{dataset_id}/cases/{case_id}",
+    operation_id="removeCase",
+    response_model=DatasetOut,
+)
+async def remove_case(dataset_id: str, case_id: str, container: ContainerDep) -> DatasetOut:
+    """Remove a case, forking the dataset version (mirrors `add_case`)."""
+    store = _store(container)
+    try:
+        dataset = await store.get_dataset(_parse(dataset_id))
+    except NotFound as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+    try:
+        forked = dataset.without_case(_parse_case(case_id))
+    except DomainError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
     await store.save_dataset(forked)

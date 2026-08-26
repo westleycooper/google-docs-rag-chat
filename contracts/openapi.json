@@ -1973,6 +1973,118 @@
         ]
       }
     },
+    "/evals/datasets/{dataset_id}/cases/{case_id}": {
+      "delete": {
+        "description": "Remove a case, forking the dataset version (mirrors `add_case`).",
+        "operationId": "removeCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Case",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "put": {
+        "description": "Replace a case's content, forking the dataset version.\n\nThe case keeps its identity; a run scored against the old wording is not\ncomparable to one scored against the new, so this forks rather than\nmutating the case in place (mirrors `add_case`).",
+        "operationId": "updateCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Case",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
     "/evals/datasets/{dataset_id}/runs": {
       "get": {
         "description": "Recent runs, newest first, so two configurations can be compared.",

@@ -32,6 +32,7 @@ from ragoogle_core.ingestion import SourceConfig
 from ragoogle_core.retrieval import Chunk, DocumentRef
 from ragoogle_core.shared.errors import NotFound
 from ragoogle_core.shared.identifiers import (
+    CaseId,
     ChunkId,
     DocumentId,
     SourceId,
@@ -583,6 +584,88 @@ def test_a_malformed_chunk_id_is_422_not_500(client):
         json={"question": "q?", "expected_chunk_ids": ["not-a-uuid"]},
     )
     assert response.status_code == 422
+
+
+def test_editing_a_case_forks_the_version_and_keeps_its_identity(client):
+    created = make_dataset(client)
+    added = client.post(
+        f"/evals/datasets/{created['dataset_id']}/cases",
+        json={"question": "original?"},
+    ).json()
+    case_id = added["cases"][0]["case_id"]
+
+    response = client.put(
+        f"/evals/datasets/{created['dataset_id']}/cases/{case_id}",
+        json={"question": "revised?"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["version"] == added["version"] + 1
+    assert body["case_count"] == 1
+    assert body["cases"][0]["case_id"] == case_id
+    assert body["cases"][0]["question"] == "revised?"
+
+
+def test_editing_an_unknown_case_is_422(client):
+    created = make_dataset(client)
+    response = client.put(
+        f"/evals/datasets/{created['dataset_id']}/cases/{CaseId.new()}",
+        json={"question": "revised?"},
+    )
+    assert response.status_code == 422
+
+
+def test_editing_a_case_with_a_malformed_case_id_is_422(client):
+    created = make_dataset(client)
+    response = client.put(
+        f"/evals/datasets/{created['dataset_id']}/cases/not-a-uuid",
+        json={"question": "revised?"},
+    )
+    assert response.status_code == 422
+
+
+def test_editing_a_case_in_an_unknown_dataset_is_404(client):
+    from ragoogle_core.shared.identifiers import DatasetId
+
+    response = client.put(
+        f"/evals/datasets/{DatasetId.new()}/cases/{CaseId.new()}",
+        json={"question": "revised?"},
+    )
+    assert response.status_code == 404
+
+
+def test_removing_a_case_forks_the_version(client):
+    created = make_dataset(client)
+    added = client.post(
+        f"/evals/datasets/{created['dataset_id']}/cases",
+        json={"question": "revenue?"},
+    ).json()
+    case_id = added["cases"][0]["case_id"]
+
+    response = client.delete(f"/evals/datasets/{created['dataset_id']}/cases/{case_id}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["version"] == added["version"] + 1
+    assert body["case_count"] == 0
+
+
+def test_removing_an_unknown_case_is_422(client):
+    created = make_dataset(client)
+    response = client.delete(f"/evals/datasets/{created['dataset_id']}/cases/{CaseId.new()}")
+    assert response.status_code == 422
+
+
+def test_removing_a_case_with_a_malformed_case_id_is_422(client):
+    created = make_dataset(client)
+    response = client.delete(f"/evals/datasets/{created['dataset_id']}/cases/not-a-uuid")
+    assert response.status_code == 422
+
+
+def test_removing_a_case_from_an_unknown_dataset_is_404(client):
+    from ragoogle_core.shared.identifiers import DatasetId
+
+    response = client.delete(f"/evals/datasets/{DatasetId.new()}/cases/{CaseId.new()}")
+    assert response.status_code == 404
 
 
 def test_an_unknown_dataset_is_404(client):

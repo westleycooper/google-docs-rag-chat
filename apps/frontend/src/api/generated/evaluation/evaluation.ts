@@ -378,6 +378,139 @@ export const useAddCase = <TError = HTTPValidationError,
       return useMutation(mutationOptions, queryClient);
     }
     /**
+ * Remove a case, forking the dataset version (mirrors `add_case`).
+ * @summary Remove Case
+ */
+export const removeCase = (
+    datasetId: string,
+    caseId: string,
+ ) => {
+      
+      
+      return apiRequest<DatasetOut>(
+      {url: `/evals/datasets/${datasetId}/cases/${caseId}`, method: 'DELETE'
+    },
+      );
+    }
+  
+
+
+export const getRemoveCaseMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCase>>, TError,{datasetId: string;caseId: string}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof removeCase>>, TError,{datasetId: string;caseId: string}, TContext> => {
+
+const mutationKey = ['removeCase'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeCase>>, {datasetId: string;caseId: string}> = (props) => {
+          const {datasetId,caseId} = props ?? {};
+
+          return  removeCase(datasetId,caseId,)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveCaseMutationResult = NonNullable<Awaited<ReturnType<typeof removeCase>>>
+    
+    export type RemoveCaseMutationError = HTTPValidationError
+
+    /**
+ * @summary Remove Case
+ */
+export const useRemoveCase = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeCase>>, TError,{datasetId: string;caseId: string}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeCase>>,
+        TError,
+        {datasetId: string;caseId: string},
+        TContext
+      > => {
+
+      const mutationOptions = getRemoveCaseMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Replace a case's content, forking the dataset version.
+
+The case keeps its identity; a run scored against the old wording is not
+comparable to one scored against the new, so this forks rather than
+mutating the case in place (mirrors `add_case`).
+ * @summary Update Case
+ */
+export const updateCase = (
+    datasetId: string,
+    caseId: string,
+    caseIn: CaseIn,
+ ) => {
+      
+      
+      return apiRequest<DatasetOut>(
+      {url: `/evals/datasets/${datasetId}/cases/${caseId}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: caseIn
+    },
+      );
+    }
+  
+
+
+export const getUpdateCaseMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCase>>, TError,{datasetId: string;caseId: string;data: CaseIn}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof updateCase>>, TError,{datasetId: string;caseId: string;data: CaseIn}, TContext> => {
+
+const mutationKey = ['updateCase'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateCase>>, {datasetId: string;caseId: string;data: CaseIn}> = (props) => {
+          const {datasetId,caseId,data} = props ?? {};
+
+          return  updateCase(datasetId,caseId,data,)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateCaseMutationResult = NonNullable<Awaited<ReturnType<typeof updateCase>>>
+    export type UpdateCaseMutationBody = CaseIn
+    export type UpdateCaseMutationError = HTTPValidationError
+
+    /**
+ * @summary Update Case
+ */
+export const useUpdateCase = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateCase>>, TError,{datasetId: string;caseId: string;data: CaseIn}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateCase>>,
+        TError,
+        {datasetId: string;caseId: string;data: CaseIn},
+        TContext
+      > => {
+
+      const mutationOptions = getUpdateCaseMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * Recent runs, newest first, so two configurations can be compared.
  * @summary List Runs
  */

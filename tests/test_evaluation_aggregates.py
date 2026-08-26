@@ -136,6 +136,22 @@ def test_adding_a_case_twice_is_rejected():
         dataset(existing).with_case(existing)
 
 
+def test_editing_a_case_forks_and_keeps_its_identity():
+    existing = case(question="original?")
+    ds = dataset(existing, case())
+    edited = case(case_id=existing.case_id, question="revised?")
+    updated = ds.with_case_updated(edited)
+    assert updated.version == ds.version + 1
+    assert len(updated) == 2
+    assert next(c for c in updated.cases if c.case_id == existing.case_id).question == "revised?"
+    assert ds.cases[0].question == "original?"
+
+
+def test_editing_an_unknown_case_is_rejected():
+    with pytest.raises(InvariantViolation, match="no such case"):
+        dataset(case()).with_case_updated(case())
+
+
 def test_removing_a_case_also_forks():
     existing = case()
     ds = dataset(existing, case())

@@ -273,6 +273,25 @@ export const buildTheme = (id: ThemeId) => {
       },
       MuiButton: { defaultProps: { disableElevation: true } },
       MuiPaper: { defaultProps: { elevation: 0 } },
+      // A dialog's elevation shadow is the only depth cue it has (MuiPaper
+      // above flattens every other Paper to elevation 0), and that shadow is
+      // close to invisible against a dark backdrop over a dark page -- the
+      // dialog and the page behind it become nearly the same colour. The
+      // border restores a crisp edge regardless of mode; the darker backdrop
+      // in dark mode gives the surface behind it somewhere to recede to.
+      MuiDialog: {
+        styleOverrides: {
+          paper: ({ theme }) => ({ border: `1px solid ${theme.palette.divider}` }),
+        },
+      },
+      MuiBackdrop: {
+        styleOverrides: {
+          root: {
+            backgroundColor:
+              preset.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.72)' : 'rgba(0, 0, 0, 0.5)',
+          },
+        },
+      },
     },
   });
 };

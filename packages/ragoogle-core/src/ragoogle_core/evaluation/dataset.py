@@ -105,6 +105,22 @@ class Dataset:
             raise InvariantViolation(f"case already present: {case.case_id}")
         return replace(self, cases=(*self.cases, case), version=self.version + 1)
 
+    def with_case_updated(self, case: Case) -> Dataset:
+        """Replace an existing case's content, forking the version.
+
+        The case keeps its `case_id` but every other field can change. Same
+        versioning discipline as `with_case`: a run scored against the old
+        wording is not comparable to one scored against the new, so editing
+        forks rather than mutating in place.
+        """
+        if not any(c.case_id == case.case_id for c in self.cases):
+            raise InvariantViolation(f"no such case: {case.case_id}")
+        return replace(
+            self,
+            cases=tuple(case if c.case_id == case.case_id else c for c in self.cases),
+            version=self.version + 1,
+        )
+
     def without_case(self, case_id: CaseId) -> Dataset:
         if not any(c.case_id == case_id for c in self.cases):
             raise InvariantViolation(f"no such case: {case_id}")
