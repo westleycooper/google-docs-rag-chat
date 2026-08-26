@@ -1,6 +1,61 @@
 {
   "components": {
     "schemas": {
+      "BrowseFoldersIn": {
+        "properties": {
+          "auth_mode": {
+            "enum": [
+              "service_account",
+              "oauth"
+            ],
+            "title": "Auth Mode",
+            "type": "string"
+          },
+          "credential_ref": {
+            "minLength": 1,
+            "title": "Credential Ref",
+            "type": "string"
+          },
+          "parent_id": {
+            "default": "root",
+            "title": "Parent Id",
+            "type": "string"
+          },
+          "principal": {
+            "minLength": 1,
+            "title": "Principal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "auth_mode",
+          "principal",
+          "credential_ref"
+        ],
+        "title": "BrowseFoldersIn",
+        "type": "object"
+      },
+      "BrowseFoldersOut": {
+        "properties": {
+          "folders": {
+            "items": {
+              "$ref": "#/components/schemas/DriveFolderOut"
+            },
+            "title": "Folders",
+            "type": "array"
+          },
+          "parent_id": {
+            "title": "Parent Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_id",
+          "folders"
+        ],
+        "title": "BrowseFoldersOut",
+        "type": "object"
+      },
       "BudgetOut": {
         "properties": {
           "available_tokens": {
@@ -683,6 +738,24 @@
           "case_count"
         ],
         "title": "DatasetOut",
+        "type": "object"
+      },
+      "DriveFolderOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "DriveFolderOut",
         "type": "object"
       },
       "EvaluationConfigOut": {
@@ -1475,6 +1548,20 @@
         "title": "SourceOut",
         "type": "object"
       },
+      "StoredCredentialOut": {
+        "description": "The result of storing a credential outside any source (ADR-0016).\n\nDecoupled from a source id on purpose: a credential can now be provisioned\n-- by pasting a key or by completing OAuth -- *before* the source it will\nbelong to has been created or saved, which is what makes browsing folders\nfrom the create dialog possible instead of requiring save-then-edit.",
+        "properties": {
+          "credential_ref": {
+            "title": "Credential Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential_ref"
+        ],
+        "title": "StoredCredentialOut",
+        "type": "object"
+      },
       "TopologyResponse": {
         "properties": {
           "generated_at": {
@@ -1645,6 +1732,48 @@
         "summary": "Stream Chat",
         "tags": [
           "chat"
+        ]
+      }
+    },
+    "/credentials": {
+      "post": {
+        "description": "Store a secret, encrypted at rest, under a freshly generated reference.\n\nThe reference is always server-generated, never typed by a user -- a\nhand-typed `credential_ref` is one typo from silently pointing a source at\nnothing, or at another source's key.",
+        "operationId": "storeCredential",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredCredentialOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Store Credential",
+        "tags": [
+          "credentials"
         ]
       }
     },
@@ -2032,6 +2161,160 @@
         ]
       }
     },
+    "/oauth/google/callback": {
+      "get": {
+        "description": "Exchange the code, store the credential, send the browser home.\n\nEvery failure path bounces back into the frontend with an error message in\nthe query string rather than rendering a raw API error page -- the browser\narrives here mid-navigation from Google, not from a fetch call the frontend\ncan catch, so an API-shaped JSON error is not something a user would ever\nusefully see.",
+        "operationId": "googleOAuthCallback",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "ragdrive_oauth_state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ragdrive Oauth State"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Callback",
+        "tags": [
+          "oauth"
+        ]
+      }
+    },
+    "/oauth/google/start": {
+      "get": {
+        "description": "Redirect the browser to Google's consent screen.\n\n`return_path` and `editing_source_id` exist so the *same* button and flow\nwork from both the create dialog (no source yet) and an existing source's\nedit dialog (reconnecting or replacing its credential): both round-trip\nthrough `state` and come back on the callback redirect.",
+        "operationId": "startGoogleOAuth",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "return_path",
+            "required": false,
+            "schema": {
+              "default": "/configuration",
+              "title": "Return Path",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "editing_source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Editing Source Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start",
+        "tags": [
+          "oauth"
+        ]
+      }
+    },
     "/sources": {
       "get": {
         "description": "Every registered source, enabled or not.",
@@ -2093,6 +2376,48 @@
           }
         },
         "summary": "Create Source",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/sources/browse-folders": {
+      "post": {
+        "description": "List the subfolders of a Drive folder, for the config UI's folder picker.\n\nTakes a `credential_ref` directly rather than a source id, so this works\nfrom the create dialog too -- before any source row exists, right after\nOAuth connects or a service-account key is stored via `POST /credentials`.",
+        "operationId": "browseFolders",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrowseFoldersIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowseFoldersOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Browse Folders",
         "tags": [
           "sources"
         ]
@@ -2169,6 +2494,57 @@
           }
         },
         "summary": "Get Source",
+        "tags": [
+          "sources"
+        ]
+      },
+      "put": {
+        "description": "Replace a source's configuration in place.\n\nA full replace, not a partial patch: `PgSourceCatalogue.save` already\nupserts by id (it has since the source was first written), so the only\nthing missing was a route that called it a second time -- there was never a\npersistence-layer reason sources could only be created once.\n\n`source_id` is immutable; every other field, including `credential_ref`,\ncan change here. Changing `credential_ref` alone does not touch the secret\nit used to point at or the one it points at now -- pair this with\n`PUT /{source_id}/credential` (rotate what an existing ref holds) or a\nfresh `POST /credentials` (point at a different secret entirely).",
+        "operationId": "updateSource",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Source",
         "tags": [
           "sources"
         ]

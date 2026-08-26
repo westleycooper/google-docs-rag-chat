@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "generator": "tools/adr/adr.py",
   "generatedFrom": "docs/adr/*.md",
-  "count": 15,
+  "count": 16,
   "byComponent": {
     "platform": 1,
     "rag-core": 6,
-    "ingestion": 1,
+    "ingestion": 2,
     "infra": 1,
     "tooling": 1,
     "frontend": 3,
@@ -14,7 +14,7 @@
   },
   "byStatus": {
     "proposed": 0,
-    "accepted": 15,
+    "accepted": 16,
     "rejected": 0,
     "deprecated": 0,
     "superseded": 0
@@ -335,6 +335,27 @@
       "supersededBy": [],
       "summary": "`streamChat`'s buffer handling and `parseFrame` both normalise line endings to `\\n` before doing any `\\n`-based parsing, and both are covered by tests that exercise the failure mode directly rather than only the parser's happy path.",
       "path": "docs/adr/0015-sse-client-must-tolerate-any-spec-legal-line-ending.md"
+    },
+    {
+      "id": 16,
+      "ref": "ADR-0016",
+      "title": "OAuth consent flow and drive.readonly over drive.file for Drive sources",
+      "status": "accepted",
+      "date": "2026-08-26",
+      "component": "ingestion",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "oauth",
+        "google-drive",
+        "credentials",
+        "security"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We keep `drive.readonly` as the sole scope for both auth modes (`SCOPES` in `google_oauth.py` is `DRIVE_SCOPES + (\"openid\", \"email\")`) and build the missing pieces around it:",
+      "path": "docs/adr/0016-oauth-consent-flow-and-drive-readonly-over-drive-file-for-dr.md"
     }
   ],
   "errors": []

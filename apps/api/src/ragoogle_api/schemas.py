@@ -195,6 +195,35 @@ class SourceOut(SourceIn):
     source_id: str
 
 
+class StoredCredentialOut(BaseModel):
+    """The result of storing a credential outside any source (ADR-0016).
+
+    Decoupled from a source id on purpose: a credential can now be provisioned
+    -- by pasting a key or by completing OAuth -- *before* the source it will
+    belong to has been created or saved, which is what makes browsing folders
+    from the create dialog possible instead of requiring save-then-edit.
+    """
+
+    credential_ref: str
+
+
+class DriveFolderOut(BaseModel):
+    id: str
+    name: str
+
+
+class BrowseFoldersIn(BaseModel):
+    auth_mode: Literal["service_account", "oauth"]
+    principal: str = Field(min_length=1)
+    credential_ref: str = Field(min_length=1)
+    parent_id: str = "root"
+
+
+class BrowseFoldersOut(BaseModel):
+    parent_id: str
+    folders: list[DriveFolderOut]
+
+
 class SkipOut(BaseModel):
     external_id: str
     reason: str

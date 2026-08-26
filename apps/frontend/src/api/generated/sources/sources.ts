@@ -36,6 +36,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BrowseFoldersIn,
+  BrowseFoldersOut,
   CredentialIn,
   GetLatestRun200,
   HTTPValidationError,
@@ -212,6 +214,75 @@ export const useCreateSource = <TError = HTTPValidationError,
       return useMutation(mutationOptions, queryClient);
     }
     /**
+ * List the subfolders of a Drive folder, for the config UI's folder picker.
+
+Takes a `credential_ref` directly rather than a source id, so this works
+from the create dialog too -- before any source row exists, right after
+OAuth connects or a service-account key is stored via `POST /credentials`.
+ * @summary Browse Folders
+ */
+export const browseFolders = (
+    browseFoldersIn: BrowseFoldersIn,
+ signal?: AbortSignal
+) => {
+      
+      
+      return apiRequest<BrowseFoldersOut>(
+      {url: `/sources/browse-folders`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: browseFoldersIn, signal
+    },
+      );
+    }
+  
+
+
+export const getBrowseFoldersMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof browseFolders>>, TError,{data: BrowseFoldersIn}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof browseFolders>>, TError,{data: BrowseFoldersIn}, TContext> => {
+
+const mutationKey = ['browseFolders'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof browseFolders>>, {data: BrowseFoldersIn}> = (props) => {
+          const {data} = props ?? {};
+
+          return  browseFolders(data,)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BrowseFoldersMutationResult = NonNullable<Awaited<ReturnType<typeof browseFolders>>>
+    export type BrowseFoldersMutationBody = BrowseFoldersIn
+    export type BrowseFoldersMutationError = HTTPValidationError
+
+    /**
+ * @summary Browse Folders
+ */
+export const useBrowseFolders = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof browseFolders>>, TError,{data: BrowseFoldersIn}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof browseFolders>>,
+        TError,
+        {data: BrowseFoldersIn},
+        TContext
+      > => {
+
+      const mutationOptions = getBrowseFoldersMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * Remove a source and, by cascade, its documents and chunks.
  * @summary Delete Source
  */
@@ -366,6 +437,82 @@ export function useGetSource<TData = Awaited<ReturnType<typeof getSource>>, TErr
 
 
 /**
+ * Replace a source's configuration in place.
+
+A full replace, not a partial patch: `PgSourceCatalogue.save` already
+upserts by id (it has since the source was first written), so the only
+thing missing was a route that called it a second time -- there was never a
+persistence-layer reason sources could only be created once.
+
+`source_id` is immutable; every other field, including `credential_ref`,
+can change here. Changing `credential_ref` alone does not touch the secret
+it used to point at or the one it points at now -- pair this with
+`PUT /{source_id}/credential` (rotate what an existing ref holds) or a
+fresh `POST /credentials` (point at a different secret entirely).
+ * @summary Update Source
+ */
+export const updateSource = (
+    sourceId: string,
+    sourceIn: SourceIn,
+ ) => {
+      
+      
+      return apiRequest<SourceOut>(
+      {url: `/sources/${sourceId}`, method: 'PUT',
+      headers: {'Content-Type': 'application/json', },
+      data: sourceIn
+    },
+      );
+    }
+  
+
+
+export const getUpdateSourceMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSource>>, TError,{sourceId: string;data: SourceIn}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof updateSource>>, TError,{sourceId: string;data: SourceIn}, TContext> => {
+
+const mutationKey = ['updateSource'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSource>>, {sourceId: string;data: SourceIn}> = (props) => {
+          const {sourceId,data} = props ?? {};
+
+          return  updateSource(sourceId,data,)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSourceMutationResult = NonNullable<Awaited<ReturnType<typeof updateSource>>>
+    export type UpdateSourceMutationBody = SourceIn
+    export type UpdateSourceMutationError = HTTPValidationError
+
+    /**
+ * @summary Update Source
+ */
+export const useUpdateSource = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSource>>, TError,{sourceId: string;data: SourceIn}, TContext>, }
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateSource>>,
+        TError,
+        {sourceId: string;data: SourceIn},
+        TContext
+      > => {
+
+      const mutationOptions = getUpdateSourceMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * Store a source's credential, encrypted at rest.
 
 Write-only by design. There is no GET: a credential that can be read back

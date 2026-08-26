@@ -126,6 +126,55 @@ class GoogleDriveSource:
                 ) from error
             raise
 
+    # -- folder browsing ---------------------------------------------------
+
+    async def list_folders(self, parent_id: str = "root") -> list[dict[str, str]]:
+        """Immediate child folders of `parent_id`, for a folder picker.
+
+        A convenience read, not part of the `DocumentSource` port: nothing in
+        the ingestion pipeline needs it, it exists purely so the config UI can
+        offer "pick a folder" instead of "paste a folder ID copied from a
+        browser URL bar." One page (up to 100 folders): a picker with more
+        folders than that in one directory is an edge case worth a "load more"
+        control later, not a reason to complicate this into a paginating
+        generator now.
+
+        Scoped to the account's My Drive -- Shared Drives are not reachable via
+        `'root' in parents` and need a separate `drives.list` call this method
+        does not make. A folder ID copied from a Shared Drive's URL still works
+        as a manually-entered root folder ID in ingestion; only browsing it here
+        is unsupported.
+        """
+
+        def call() -> dict[str, Any]:
+            response: dict[str, Any] = (
+                self._svc()
+                .files()
+                .list(
+                    q=(
+                        f"'{parent_id}' in parents and trashed = false and "
+                        f"mimeType = '{FOLDER_MIME}'"
+                    ),
+                    fields="files(id, name)",
+                    pageSize=100,
+                    orderBy="name",
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                )
+                .execute()
+            )
+            return response
+
+        try:
+            result = await asyncio.to_thread(call)
+        except HttpError as error:
+            if _is_permission_error(error):
+                raise PermissionError(
+                    f"{self.principal} cannot list the contents of {parent_id!r}"
+                ) from error
+            raise
+        return [{"id": f["id"], "name": f["name"]} for f in result.get("files", [])]
+
     # -- traversal --------------------------------------------------------
 
     async def list_documents(

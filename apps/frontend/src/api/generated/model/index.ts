@@ -17,6 +17,9 @@ indistinguishable from an empty folder (ADR-0003).
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './browseFoldersIn';
+export * from './browseFoldersInAuthMode';
+export * from './browseFoldersOut';
 export * from './budgetOut';
 export * from './caseIn';
 export * from './caseInExpectedAnswer';
@@ -55,6 +58,7 @@ export * from './datasetIn';
 export * from './datasetInDescription';
 export * from './datasetOut';
 export * from './datasetOutDescription';
+export * from './driveFolderOut';
 export * from './evaluationConfigOut';
 export * from './evaluationConfigOutJudgeModel';
 export * from './evaluationConfigOutRerankModel';
@@ -71,6 +75,7 @@ export * from './generationScoreOut';
 export * from './generationScoreOutRationale';
 export * from './getDatasetParams';
 export * from './getLatestRun200';
+export * from './googleOAuthCallbackParams';
 export * from './hTTPValidationError';
 export * from './healthStatus';
 export * from './healthStatusChecks';
@@ -96,7 +101,9 @@ export * from './sourceInMaxDocumentBytes';
 export * from './sourceOut';
 export * from './sourceOutAuthMode';
 export * from './sourceOutMaxDocumentBytes';
+export * from './startGoogleOAuthParams';
 export * from './startIngestionParams';
+export * from './storedCredentialOut';
 export * from './topologyResponse';
 export * from './traceEventOut';
 export * from './traceEventOutDetail';

@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from tests.fakes import (
     FakeAnswerJudge,
     FakeChatModel,
+    FakeCredentialStore,
     FakeDocumentCatalogue,
     FakeEmbeddingProvider,
     FakeReranker,
@@ -183,6 +184,31 @@ def client(request):
         documents=FakeDocumentCatalogue(),
         journal=FakeRunJournal(),
         credentials=None,
+        reranker=FakeReranker(),
+        evaluations=FakeEvaluationStore(),  # type: ignore[arg-type]
+        judge=FakeAnswerJudge(),  # type: ignore[arg-type]
+    )
+    with TestClient(create_app(container)) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def client_with_credentials():
+    """Like `client`, but with a working credential store -- for the tests
+    that exercise POST /credentials and folder browsing, neither of which the
+    default `client` fixture's `credentials=None` can reach."""
+    store, embeddings = FakeVectorStore(), FakeEmbeddingProvider()
+    container = Container(
+        settings=Settings(frontend_url=None, observability_url=None),
+        engine=FakeEngine(True),  # type: ignore[arg-type]
+        embeddings=embeddings,
+        store=store,
+        chat_model=FakeChatModel(),
+        tokenizer=FakeTokenizer(),  # type: ignore[arg-type]
+        sources=FakeSourceCatalogue(),  # type: ignore[arg-type]
+        documents=FakeDocumentCatalogue(),
+        journal=FakeRunJournal(),
+        credentials=FakeCredentialStore(),  # type: ignore[arg-type]
         reranker=FakeReranker(),
         evaluations=FakeEvaluationStore(),  # type: ignore[arg-type]
         judge=FakeAnswerJudge(),  # type: ignore[arg-type]
@@ -580,3 +606,209 @@ def test_runs_can_be_listed_for_a_dataset(client):
     client.post(f"/evals/datasets/{created['dataset_id']}/runs")
     listed = client.get(f"/evals/datasets/{created['dataset_id']}/runs").json()
     assert len(listed) >= 1
+
+
+# -- source updates (ADR-0016) ---------------------------------------------
+
+
+def test_a_source_can_be_updated_in_place(client):
+    created = client.post("/sources", json=source_payload()).json()
+    response = client.put(
+        f"/sources/{created['source_id']}",
+        json=source_payload(name="Renamed Drive", principal="new-lead@example.com"),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source_id"] == created["source_id"]
+    assert body["name"] == "Renamed Drive"
+    assert body["principal"] == "new-lead@example.com"
+
+
+def test_an_update_is_visible_on_a_subsequent_get(client):
+    created = client.post("/sources", json=source_payload()).json()
+    client.put(f"/sources/{created['source_id']}", json=source_payload(name="Renamed"))
+    assert client.get(f"/sources/{created['source_id']}").json()["name"] == "Renamed"
+
+
+def test_updating_an_unknown_source_is_404(client):
+    response = client.put(f"/sources/{SourceId.new()}", json=source_payload())
+    assert response.status_code == 404
+
+
+def test_an_update_still_enforces_domain_invariants(client):
+    """A blank principal is as invalid on update as it is on create."""
+    created = client.post("/sources", json=source_payload()).json()
+    response = client.put(f"/sources/{created['source_id']}", json=source_payload(principal=""))
+    assert response.status_code == 422
+
+
+def test_an_update_can_change_root_folder_ids(client):
+    created = client.post("/sources", json=source_payload()).json()
+    response = client.put(
+        f"/sources/{created['source_id']}",
+        json=source_payload(root_folder_ids=["folder-a", "folder-b"]),
+    )
+    assert response.json()["root_folder_ids"] == ["folder-a", "folder-b"]
+
+
+# -- standalone credential storage (ADR-0016) --------------------------------
+
+
+def test_a_credential_can_be_stored_before_any_source_exists(client_with_credentials):
+    response = client_with_credentials.post("/credentials", json={"secret": "x" * 40})
+    assert response.status_code == 201
+    ref = response.json()["credential_ref"]
+    assert ref  # server-generated, never echoes the secret back
+    assert "x" * 40 not in response.text
+
+
+def test_each_stored_credential_gets_a_distinct_reference(client_with_credentials):
+    first = client_with_credentials.post("/credentials", json={"secret": "a" * 40}).json()
+    second = client_with_credentials.post("/credentials", json={"secret": "b" * 40}).json()
+    assert first["credential_ref"] != second["credential_ref"]
+
+
+def test_storing_a_standalone_credential_without_a_key_is_refused(client):
+    """Refusing beats falling back to plaintext (ADR-0003), for this endpoint too."""
+    response = client.post("/credentials", json={"secret": "x" * 40})
+    assert response.status_code == 503
+
+
+# -- folder browsing (ADR-0016) ---------------------------------------------
+
+
+class _FakeFolderSource:
+    """Stands in for GoogleDriveSource inside browse_folders."""
+
+    def __init__(self, credentials, root_folder_ids=()):
+        self.credentials = credentials
+
+    async def list_folders(self, parent_id="root"):
+        return [{"id": f"{parent_id}-a", "name": f"Folder A under {parent_id}"}]
+
+
+def test_browsing_folders_uses_the_stored_credential(client_with_credentials, monkeypatch):
+    monkeypatch.setattr("ragoogle_infra.sources.google_drive.GoogleDriveSource", _FakeFolderSource)
+    stored = client_with_credentials.post(
+        "/credentials",
+        json={"secret": '{"refresh_token": "rt", "client_id": "cid", "client_secret": "cs"}'},
+    ).json()
+    response = client_with_credentials.post(
+        "/sources/browse-folders",
+        json={
+            "auth_mode": "oauth",
+            "principal": "lead@example.com",
+            "credential_ref": stored["credential_ref"],
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["parent_id"] == "root"
+    assert body["folders"] == [{"id": "root-a", "name": "Folder A under root"}]
+
+
+def test_browsing_folders_descends_into_a_named_parent(client_with_credentials, monkeypatch):
+    monkeypatch.setattr("ragoogle_infra.sources.google_drive.GoogleDriveSource", _FakeFolderSource)
+    stored = client_with_credentials.post(
+        "/credentials",
+        json={"secret": '{"refresh_token": "rt", "client_id": "cid", "client_secret": "cs"}'},
+    ).json()
+    response = client_with_credentials.post(
+        "/sources/browse-folders",
+        json={
+            "auth_mode": "oauth",
+            "principal": "lead@example.com",
+            "credential_ref": stored["credential_ref"],
+            "parent_id": "finance",
+        },
+    )
+    assert response.json()["parent_id"] == "finance"
+    assert response.json()["folders"][0]["id"] == "finance-a"
+
+
+def test_browsing_folders_with_an_unknown_credential_ref_is_422(client_with_credentials):
+    response = client_with_credentials.post(
+        "/sources/browse-folders",
+        json={
+            "auth_mode": "service_account",
+            "principal": "lead@example.com",
+            "credential_ref": "does-not-exist",
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_browsing_folders_without_a_configured_credential_store_is_503(client):
+    response = client.post(
+        "/sources/browse-folders",
+        json={
+            "auth_mode": "service_account",
+            "principal": "lead@example.com",
+            "credential_ref": "anything",
+        },
+    )
+    assert response.status_code == 503
+
+
+def test_browsing_folders_with_a_malformed_stored_oauth_secret_is_422(
+    client_with_credentials, monkeypatch
+):
+    monkeypatch.setattr("ragoogle_infra.sources.google_drive.GoogleDriveSource", _FakeFolderSource)
+    stored = client_with_credentials.post(
+        "/credentials", json={"secret": "not valid json for oauth"}
+    ).json()
+    response = client_with_credentials.post(
+        "/sources/browse-folders",
+        json={
+            "auth_mode": "oauth",
+            "principal": "lead@example.com",
+            "credential_ref": stored["credential_ref"],
+        },
+    )
+    assert response.status_code == 422
+
+
+# -- OAuth start/callback (ADR-0016) -----------------------------------------
+
+
+def test_oauth_start_without_a_configured_client_bounces_back_with_an_error(client):
+    response = client.get("/oauth/google/start", follow_redirects=False)
+    assert response.status_code == 307
+    location = response.headers["location"]
+    assert location.startswith("http://localhost:5173/configuration")
+    assert "oauth_status=error" in location
+
+
+def test_oauth_callback_with_no_code_bounces_back_with_an_error(client):
+    response = client.get("/oauth/google/callback", follow_redirects=False)
+    assert response.status_code == 307
+    assert "oauth_status=error" in response.headers["location"]
+
+
+def test_oauth_callback_reports_a_google_side_denial(client):
+    response = client.get("/oauth/google/callback?error=access_denied", follow_redirects=False)
+    assert "access_denied" in response.headers["location"]
+
+
+def test_oauth_callback_rejects_a_state_that_does_not_match_the_cookie(client):
+    import base64
+    import json as jsonlib
+
+    state = base64.urlsafe_b64encode(
+        jsonlib.dumps(
+            {
+                "nonce": "attacker-supplied",
+                "return_path": "/configuration",
+                "editing_source_id": None,
+            }
+        ).encode()
+    ).decode()
+    response = client.get(
+        f"/oauth/google/callback?code=stolen-code&state={state}",
+        follow_redirects=False,
+        cookies={"ragdrive_oauth_state": "the-real-nonce"},
+    )
+    assert response.status_code == 307
+    location = response.headers["location"]
+    assert "oauth_status=error" in location
+    assert "verified" in location

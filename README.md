@@ -78,12 +78,21 @@ rather than holding them in plaintext, so ingestion will not start.
 1. Open **Configuration → Add source**.
 2. Choose an authentication mode:
    - **Service account** — a Workspace admin grants domain-wide delegation for
-     `drive.readonly`. Ingestion acts as the subject you name, and the corpus is
-     whatever that person can see. Best for a shared drive.
-   - **OAuth** — you consent directly. Works for personal Gmail, needs no admin.
-3. Paste the credential. It is encrypted before it touches the database and
-   there is no endpoint that reads it back.
-4. Press ▶ to ingest.
+     `drive.readonly`. Paste the JSON key and name the subject to impersonate;
+     the corpus is whatever that person can see. Best for a shared drive.
+   - **OAuth** — click **Connect Google Drive** and consent on Google's own
+     screen. Works for personal Gmail, needs no admin, and fills in the
+     principal for you. Requires a one-time Google Cloud Console setup — see
+     `RAGOOGLE_GOOGLE_OAUTH_CLIENT_ID` in `.env.example` for the steps — and is
+     unavailable (with a clear error, not a broken redirect) until that's done.
+3. Either way, the credential is encrypted before it touches the database; no
+   endpoint ever reads it back.
+4. Click **Browse** to pick root folders from the connected Drive, or paste a
+   folder id directly — the picker only reaches My Drive, so a Shared Drive
+   folder needs the paste. Leaving it empty ingests the whole Drive.
+5. Press ▶ to ingest. A source can be edited afterwards — reconnect Drive,
+   rotate a credential, or change its folders — without deleting it and losing
+   ingestion history.
 
 Permission failures never fail the run. They are recorded, and shown to you.
 
@@ -211,6 +220,7 @@ Some decisions worth reading first:
 | [ADR-0004](docs/adr/0004-hybrid-retrieval-with-rrf-and-cross-encoder-rerank.md) | Why hybrid retrieval, and why RRF over weighted blending |
 | [ADR-0008](docs/adr/0008-threejs-context-budget-with-user-directed-truncation.md) | Why the context window is visible and truncatable |
 | [ADR-0012](docs/adr/0012-ts-rank-cd-rather-than-true-bm25.md) | Where ADR-0004 was imprecise, and why the correction is acceptable |
+| [ADR-0016](docs/adr/0016-oauth-consent-flow-and-drive-readonly-over-drive-file-for-dr.md) | Why `drive.readonly` over the narrower `drive.file`, and how credentials are decoupled from sources |
 
 ---
 

@@ -56,7 +56,7 @@ class StubFiles:
         self.media_errors = media_errors or {}
         self.calls: list[dict] = []
 
-    def list(self, *, q, fields, pageSize, pageToken, **kw):  # noqa: N803
+    def list(self, *, q, fields, pageSize, pageToken=None, **kw):  # noqa: N803
         self.calls.append({"q": q, "pageToken": pageToken, **kw})
         folder = q.split("'")[1]
         if folder in self.denied:
@@ -391,3 +391,66 @@ async def test_a_server_error_on_fetch_is_not_disguised_as_permission():
 
     with pytest.raises(HttpError):
         await make_source(files).fetch_content(SourceDocument("d1", "Doc", DOC))
+
+
+# -- folder browsing --------------------------------------------------------
+
+
+async def test_list_folders_maps_the_response_to_id_and_name():
+    # Filtering to folders happens server-side via the query string (checked
+    # below); the stub returns exactly what a real Drive response already
+    # filtered would look like, and this asserts the mapping to plain dicts.
+    files = StubFiles(
+        pages={
+            "root": [
+                {
+                    "files": [
+                        file_entry("f1", "Finance", FOLDER),
+                        file_entry("f2", "Legal", FOLDER),
+                    ]
+                }
+            ]
+        },
+    )
+    folders = await make_source(files).list_folders()
+    assert folders == [{"id": "f1", "name": "Finance"}, {"id": "f2", "name": "Legal"}]
+
+
+async def test_list_folders_requests_folders_only():
+    files = StubFiles(pages={"root": [{"files": []}]})
+    await make_source(files).list_folders()
+    assert f"mimeType = '{FOLDER}'" in files.calls[0]["q"]
+    assert "trashed = false" in files.calls[0]["q"]
+
+
+async def test_list_folders_defaults_to_the_drive_root():
+    files = StubFiles(pages={"root": [{"files": []}]})
+    await make_source(files).list_folders()
+    assert "'root' in parents" in files.calls[0]["q"]
+
+
+async def test_list_folders_descends_into_a_named_parent():
+    files = StubFiles(pages={"f1": [{"files": [file_entry("f1a", "Q3", FOLDER)]}]})
+    folders = await make_source(files).list_folders(parent_id="f1")
+    assert folders == [{"id": "f1a", "name": "Q3"}]
+    assert "'f1' in parents" in files.calls[0]["q"]
+
+
+async def test_list_folders_still_reaches_shared_drives():
+    files = StubFiles(pages={"root": [{"files": []}]})
+    await make_source(files).list_folders()
+    assert files.calls[0]["supportsAllDrives"] is True
+    assert files.calls[0]["includeItemsFromAllDrives"] is True
+
+
+async def test_list_folders_on_a_denied_parent_raises_permission_error():
+    """Not a skip -- there is no run to record it against. The picker UI
+    surfaces this directly to the user instead."""
+    files = StubFiles(pages={}, denied={"secret-folder"})
+    with pytest.raises(PermissionError, match=PRINCIPAL):
+        await make_source(files).list_folders(parent_id="secret-folder")
+
+
+async def test_list_folders_of_an_empty_directory_is_an_empty_list():
+    files = StubFiles(pages={"root": [{"files": []}]})
+    assert await make_source(files).list_folders() == []

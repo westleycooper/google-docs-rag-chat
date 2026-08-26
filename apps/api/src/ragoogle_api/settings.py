@@ -52,6 +52,21 @@ class Settings(BaseSettings):
     frontend_url: str | None = "http://frontend"
     observability_url: str | None = "http://observability"
 
+    # ADR-0016. A real Google OAuth consent flow, not a "paste a token you
+    # already have" text box. `google_oauth_redirect_uri` must be registered
+    # verbatim as an authorized redirect URI on the OAuth client in Google
+    # Cloud Console -- Google refuses the exchange otherwise. All three are
+    # None until the operator sets up a project; the flow returns a clear 503
+    # rather than a confusing failure deep in the exchange when they are.
+    google_oauth_client_id: str | None = None
+    google_oauth_client_secret: str | None = None
+    google_oauth_redirect_uri: str = "http://localhost:8000/oauth/google/callback"
+    # Where the browser is sent *back to* once the callback finishes -- the
+    # user-facing origin, not frontend_url above (that one is the container-
+    # network hostname used for the topology ping and is unreachable from an
+    # actual browser).
+    frontend_public_url: str = "http://localhost:5173"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

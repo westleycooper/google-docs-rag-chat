@@ -336,3 +336,24 @@ class FakeAnswerJudge:
             citation_correctness=1.0 if "[" in answer else 0.0,
             rationale="overlap heuristic",
         )
+
+
+@dataclass
+class FakeCredentialStore:
+    """Satisfies `CredentialStore`. An in-memory dict, encrypting nothing --
+    that is exactly why this is a test double and not `PgCredentialStore`."""
+
+    secrets: dict[str, str] = field(default_factory=dict)
+
+    async def put(self, reference: str, secret: str) -> None:
+        self.secrets[reference] = secret
+
+    async def get(self, reference: str) -> str:
+        from ragoogle_core.shared.errors import NotFound
+
+        if reference not in self.secrets:
+            raise NotFound("Credential", reference)
+        return self.secrets[reference]
+
+    async def delete(self, reference: str) -> None:
+        self.secrets.pop(reference, None)
