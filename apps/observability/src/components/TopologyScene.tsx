@@ -10,11 +10,11 @@
  * architecture dashboard whose only failure signal is "the red one" is unusable
  * for them.
  *
- * Nodes render as unfilled wireframes rather than solid shapes — a plain
- * line-art look stays legible regardless of which theme is active, and it
- * means a node's silhouette never fights its status colour for attention. A
- * node still carries an invisible solid twin for raycasting: a pure line has
- * near-zero hit area, and picking one exactly would be unreasonably fussy.
+ * Nodes render as filled low-poly shapes with a darker edge outline on top --
+ * solid enough that status colour reads clearly at a glance, with the outline
+ * keeping each shape's silhouette crisp against its neighbours. The fill mesh
+ * carries the raycast hit-test directly; no separate invisible proxy is
+ * needed once the shape is solid rather than a bare line.
  *
  * The camera is user-driven (OrbitControls) rather than auto-rotating: once a
  * viewer can grab the scene themselves, ambient motion only fights their drag.
@@ -320,7 +320,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       }
     }
 
-    const pulsing: { material: THREE.LineBasicMaterial; rate: number; base: number }[] = [];
+    const pulsing: { material: THREE.MeshStandardMaterial; rate: number; base: number }[] = [];
     const pickable: THREE.Mesh[] = [];
 
     for (const node of nodes) {
@@ -330,49 +330,53 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
 
       const muted = !node.checkable || node.status === 'unknown';
       const { geometry, halfHeight, ringRadius } = shape;
-
-      // An invisible solid twin carries the raycast hit-test: a bare wireframe
-      // has almost no area to click, and picking one precisely would be
-      // needlessly fussy for something this small on screen.
-      const hitTarget = new THREE.Mesh(
-        geometry,
-        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
-      );
-      hitTarget.position.copy(position);
-      hitTarget.userData = { nodeId: node.id };
-      group.add(hitTarget);
-      pickable.push(hitTarget);
-
       const colour = STATUS_COLOURS[node.status];
-      const edges = new THREE.EdgesGeometry(geometry, 8);
-      const lineMaterial = new THREE.LineBasicMaterial({
+
+      const fillMaterial = new THREE.MeshStandardMaterial({
         color: colour,
-        transparent: true,
-        opacity: node.checkable ? 0.95 : 0.5,
+        emissive: colour,
+        emissiveIntensity: muted ? 0.08 : 0.35,
+        roughness: 0.45,
+        metalness: 0.12,
+        transparent: !node.checkable,
+        opacity: node.checkable ? 1 : 0.5,
       });
-      const wireframe = new THREE.LineSegments(edges, lineMaterial);
-      wireframe.position.copy(position);
+      const mesh = new THREE.Mesh(geometry, fillMaterial);
+      mesh.position.copy(position);
+      mesh.userData = { nodeId: node.id };
+      group.add(mesh);
+      pickable.push(mesh);
+
+      // A darker edge outline on top of the fill keeps each shape's
+      // silhouette crisp against its neighbours rather than relying on the
+      // fill colour alone to separate one node from the next.
+      const outlineColour = new THREE.Color(colour).multiplyScalar(0.55);
+      const edges = new THREE.EdgesGeometry(geometry, 8);
+      const outline = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial({ color: outlineColour, transparent: true, opacity: 0.9 }),
+      );
+      outline.position.copy(position);
       if (!node.checkable) {
         // A dashed outline reads as "reference only, nothing to poll" rather
         // than "unknown, might be broken" -- the same grey as a genuinely
         // unreachable node would otherwise be indistinguishable from a
         // structurally non-live one (this is the "why is infra greyed out"
         // question made visible instead of asked).
-        const dashedMaterial = new THREE.LineDashedMaterial({
-          color: colour,
+        outline.material = new THREE.LineDashedMaterial({
+          color: outlineColour,
           transparent: true,
-          opacity: 0.5,
+          opacity: 0.7,
           dashSize: 0.06,
           gapSize: 0.05,
         });
-        wireframe.material = dashedMaterial;
-        wireframe.computeLineDistances();
+        outline.computeLineDistances();
       }
-      group.add(wireframe);
+      group.add(outline);
 
       const rate = STATUS_PULSE[node.status];
       if (rate > 0 && !reduceMotion && node.checkable) {
-        pulsing.push({ material: lineMaterial, rate, base: 0.55 });
+        pulsing.push({ material: fillMaterial, rate, base: 0.35 });
       }
 
       const label = makeLabel(node.label, muted ? '#A8B0AE' : '#FFFFFF');
@@ -405,7 +409,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const render = () => {
       const elapsed = clock.getElapsedTime();
       for (const { material, rate, base } of pulsing) {
-        material.opacity = base + 0.45 * (0.5 + 0.5 * Math.sin(elapsed * rate * Math.PI * 2));
+        material.emissiveIntensity = base + 0.45 * (0.5 + 0.5 * Math.sin(elapsed * rate * Math.PI * 2));
       }
       controls.update();
       renderer.render(scene, camera);
