@@ -10,11 +10,11 @@
  * architecture dashboard whose only failure signal is "the red one" is unusable
  * for them.
  *
- * Nodes render as unfilled, rounded-corner wireframe cubes rather than solid
- * shapes — a plain line-art look reads better against the scanline background
- * than a lit, filled mesh, and it means a node's silhouette never fights its
- * status colour for attention. A node still carries an invisible solid twin
- * for raycasting: a pure line has near-zero hit area, and picking one exactly
+ * Nodes render as unfilled wireframes rather than solid shapes — a plain
+ * line-art look reads better against the scanline background than a lit,
+ * filled mesh, and it means a node's silhouette never fights its status
+ * colour for attention. A node still carries an invisible solid twin for
+ * raycasting: a pure line has near-zero hit area, and picking one exactly
  * would be unreasonably fussy.
  *
  * The camera is user-driven (OrbitControls) rather than auto-rotating: once a
@@ -24,7 +24,6 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -55,17 +54,67 @@ const TIER_Y: Record<string, number> = {
   external: -3.4,
 };
 
-/** Box proportions per kind, so shape still hints at role now every node is a
- * rounded cube rather than a distinct primitive. */
-const NODE_DIMENSIONS: Record<string, [number, number, number]> = {
-  frontend: [1.15, 0.65, 0.6],
-  service: [0.9, 0.9, 0.85],
-  datastore: [0.8, 1.05, 0.8],
-  external: [0.7, 0.7, 0.65],
-};
-
 const CONNECTOR_COLOUR = 0x5fd4c0; // bright enough to read against the near-black background
 const CONNECTOR_WIDTH_PX = 2.5;
+
+/** Shrinks every primitive below by the same factor -- "the same shapes as
+ * before, a bit smaller." */
+const NODE_SCALE = 0.8;
+
+interface NodeShape {
+  geometry: THREE.BufferGeometry;
+  /** A sphere has no edges an EdgesGeometry threshold will ever catch (every
+   * adjacent facet is near-coplanar) -- it needs every triangle edge drawn,
+   * not just the sharp ones, or it renders as next to nothing. */
+  wireframe: 'edges' | 'full';
+  /** Half the shape's vertical extent, for label placement below it. */
+  halfHeight: number;
+  /** Selection-ring radius, sized to sit just outside the shape. */
+  ringRadius: number;
+}
+
+/** The original per-kind primitives (shape encodes kind, readable even
+ * without colour), just built small enough to render as a clean wireframe. */
+const shapeFor = (kind: string): NodeShape => {
+  if (kind === 'datastore') {
+    const radius = 0.5 * NODE_SCALE;
+    const height = 0.7 * NODE_SCALE;
+    return {
+      geometry: new THREE.CylinderGeometry(radius, radius, height, 24),
+      wireframe: 'edges',
+      halfHeight: height / 2,
+      ringRadius: radius * 1.5,
+    };
+  }
+  if (kind === 'external') {
+    const radius = 0.55 * NODE_SCALE;
+    return {
+      geometry: new THREE.OctahedronGeometry(radius),
+      wireframe: 'edges',
+      halfHeight: radius,
+      ringRadius: radius * 1.5,
+    };
+  }
+  if (kind === 'frontend') {
+    const w = 0.9 * NODE_SCALE;
+    const h = 0.7 * NODE_SCALE;
+    const d = 0.7 * NODE_SCALE;
+    return {
+      geometry: new THREE.BoxGeometry(w, h, d),
+      wireframe: 'edges',
+      halfHeight: h / 2,
+      ringRadius: Math.max(w, d) * 0.9,
+    };
+  }
+  // service
+  const radius = 0.55 * NODE_SCALE;
+  return {
+    geometry: new THREE.SphereGeometry(radius, 28, 20),
+    wireframe: 'full',
+    halfHeight: radius,
+    ringRadius: radius * 1.5,
+  };
+};
 
 /**
  * A node label as a sprite.
@@ -243,9 +292,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       if (!position) continue;
 
       const muted = !node.checkable || node.status === 'unknown';
-      const [w, h, d] = NODE_DIMENSIONS[node.kind] ?? [0.85, 0.85, 0.85];
-      const shortest = Math.min(w, h, d);
-      const geometry = new RoundedBoxGeometry(w, h, d, 3, shortest * 0.22);
+      const { geometry, wireframe: wireframeMode, halfHeight, ringRadius } = shapeFor(node.kind);
 
       // An invisible solid twin carries the raycast hit-test: a bare wireframe
       // has almost no area to click, and picking one precisely would be
@@ -260,7 +307,10 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       pickable.push(hitTarget);
 
       const colour = STATUS_COLOURS[node.status];
-      const edges = new THREE.EdgesGeometry(geometry, 8);
+      const edges =
+        wireframeMode === 'edges'
+          ? new THREE.EdgesGeometry(geometry, 8)
+          : new THREE.WireframeGeometry(geometry);
       const lineMaterial = new THREE.LineBasicMaterial({
         color: colour,
         transparent: true,
@@ -292,11 +342,11 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       }
 
       const label = makeLabel(node.label, muted ? '#8FBDB4' : '#E4FFFB');
-      label.position.set(position.x, position.y - h / 2 - 0.27, position.z);
+      label.position.set(position.x, position.y - halfHeight - 0.27, position.z);
       group.add(label);
 
       if (node.id === selectedId) {
-        const ring = makeSelectionRing(Math.max(w, d) * 0.75, 0x2dd4bf); // bright teal, matches MUI primary
+        const ring = makeSelectionRing(ringRadius, 0x2dd4bf); // bright teal, matches MUI primary
         ring.position.copy(position);
         group.add(ring);
       }

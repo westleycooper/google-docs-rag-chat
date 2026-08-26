@@ -16,8 +16,10 @@ superseded_by: []
 
 Direct feedback on the topology view (ADR-0006), five points:
 
-1. Nodes should be rounded-corner cubes, rendered as unfilled poly lines, not
-   solid shapes.
+1. Nodes should render as unfilled poly lines, not solid shapes — kept as the
+   same per-kind primitives as before (sphere/cylinder/octahedron/box), just
+   smaller, once a first pass unifying them into one rounded-cube shape per
+   node turned out to be a step too far from what was actually asked for.
 2. The lines connecting nodes are too faint to read.
 3. A node should be clickable through to where it actually runs (e.g.
    `localhost:5173`).
@@ -82,15 +84,21 @@ immediate new tab would be surprising and irreversible per click — but the
 link now appears both in the sidebar list (a small open-in-new icon next to
 each row) and prominently in the detail panel once a node is selected.
 
-**Nodes are rounded-corner wireframe boxes.** Every node kind now uses
-`RoundedBoxGeometry` (proportioned per kind — flat-and-wide for a frontend,
-tall for a datastore, small for external — so shape still hints at role now
-that they're all boxes) rendered via `THREE.EdgesGeometry` as unfilled line
-segments rather than a lit `MeshStandardMaterial` solid. An invisible solid
-twin of the same geometry carries the raycast hit-test, since a bare
-wireframe has almost no area to click precisely. `checkable: false` nodes get
-a dashed line material instead of solid, reinforcing the "reference, not
-polled" reading directly in the 3D view, not just the side panel.
+**Nodes are wireframe versions of the original per-kind primitives, ~20%
+smaller.** A first pass replaced every kind with one uniform rounded-cube
+shape; that read as further from "the same shapes as before" than intended,
+so the primitives reverted to the original box (frontend) / sphere (service)
+/ cylinder (datastore) / octahedron (external), each still rendered unfilled
+rather than as a lit `MeshStandardMaterial` solid. Wireframe extraction is
+shape-dependent: a box, cylinder, and octahedron all have real sharp edges, so
+`THREE.EdgesGeometry` gives a clean silhouette outline for them; a sphere has
+none (every adjacent facet is near-coplanar at any reasonable segment count),
+so it uses `THREE.WireframeGeometry` instead, which draws every triangle edge
+and produces the classic lat/long wire-globe look. An invisible solid twin of
+the same geometry carries the raycast hit-test, since a bare wireframe has
+almost no area to click precisely. `checkable: false` nodes get a dashed line
+material instead of solid, reinforcing the "reference, not polled" reading
+directly in the 3D view, not just the side panel.
 
 **Dependency edges are fat lines, not 1px `THREE.Line`.** `linewidth` on
 `LineBasicMaterial` is ignored by most WebGL backends (a long-standing
@@ -129,9 +137,9 @@ the actual ask.
   2-second `PING_TIMEOUT_SECONDS` and run concurrently with the other pings,
   but it is real, continuous external traffic this feature did not generate
   before.
-- All nodes sharing one geometry type (a box) trades away the previous
-  per-kind primitive distinction (sphere/cylinder/octahedron/box) for size and
-  proportion instead — a smaller signal, leaned on more heavily now.
+- Two wireframe-extraction paths (`EdgesGeometry` for flat-faced shapes,
+  `WireframeGeometry` for the sphere) instead of one, because no single
+  method reads well across every primitive shape.
 
 ### Neutral
 
@@ -159,3 +167,10 @@ that a public page can approximate for free.
 **Keep the ambient auto-rotate, layered under OrbitControls.** Three.js
 doesn't stop `autoRotate` during a manual drag without extra event wiring, so
 this would fight the user's own rotation. Dropped rather than fought.
+
+**One uniform rounded-cube shape for every node, sized per kind instead of
+shaped per kind.** Tried first, on the reasoning that a consistent geometry
+would make the low-poly wireframe treatment read more coherently as one
+design language. Reverted on direct feedback: "the same shapes as before" was
+the actual request, and collapsing sphere/cylinder/octahedron/box into one
+shape was a bigger change than asked for, not a refinement of it.
