@@ -71,25 +71,29 @@ const NODE_SCALE = 0.8;
 
 interface NodeShape {
   geometry: THREE.BufferGeometry;
-  /** A sphere has no edges an EdgesGeometry threshold will ever catch (every
-   * adjacent facet is near-coplanar) -- it needs every triangle edge drawn,
-   * not just the sharp ones, or it renders as next to nothing. */
-  wireframe: 'edges' | 'full';
   /** Half the shape's vertical extent, for label placement below it. */
   halfHeight: number;
   /** Selection-ring radius, sized to sit just outside the shape. */
   ringRadius: number;
 }
 
-/** The original per-kind primitives (shape encodes kind, readable even
- * without colour), just built small enough to render as a clean wireframe. */
+/** Per-kind primitives, so shape still hints at role (readable even without
+ * colour) -- box and sphere replaced with two more Platonic solids alongside
+ * the octahedron external already used. Every shape here has real dihedral
+ * angles between adjacent faces, so `THREE.EdgesGeometry` (silhouette edges
+ * only) reads cleanly on all of them; a smooth sphere or a box's flat faces
+ * used to need special-casing (a box's edges are fine, but a sphere has none
+ * an edge-angle threshold will ever catch), which no longer applies now that
+ * every shape is faceted by construction. For any `new THREE.XGeometry(radius)`
+ * Platonic solid, `radius` is exactly the circumradius -- the same distance
+ * from centre to vertex in every direction -- so using it directly as
+ * `halfHeight` is exact, not an approximation. */
 const shapeFor = (kind: string): NodeShape => {
   if (kind === 'datastore') {
     const radius = 0.5 * NODE_SCALE;
     const height = 0.7 * NODE_SCALE;
     return {
       geometry: new THREE.CylinderGeometry(radius, radius, height, 24),
-      wireframe: 'edges',
       halfHeight: height / 2,
       ringRadius: radius * 1.5,
     };
@@ -98,31 +102,22 @@ const shapeFor = (kind: string): NodeShape => {
     const radius = 0.55 * NODE_SCALE;
     return {
       geometry: new THREE.OctahedronGeometry(radius),
-      wireframe: 'edges',
       halfHeight: radius,
       ringRadius: radius * 1.5,
     };
   }
   if (kind === 'frontend') {
-    const w = 0.9 * NODE_SCALE;
-    const h = 0.7 * NODE_SCALE;
-    const d = 0.7 * NODE_SCALE;
+    const radius = 0.5 * NODE_SCALE;
     return {
-      geometry: new THREE.BoxGeometry(w, h, d),
-      wireframe: 'edges',
-      halfHeight: h / 2,
-      ringRadius: Math.max(w, d) * 0.9,
+      geometry: new THREE.DodecahedronGeometry(radius),
+      halfHeight: radius,
+      ringRadius: radius * 1.5,
     };
   }
-  // service -- low segment counts on purpose: WireframeGeometry draws every
-  // triangle edge (a sphere has no sharp ones for EdgesGeometry to pick out),
-  // so a smooth 28x20 sphere here means a dense lat/long mesh. Dropping to a
-  // handful of segments gives the same low-poly, faceted read as the other
-  // primitives instead of a busy grid.
+  // service
   const radius = 0.55 * NODE_SCALE;
   return {
-    geometry: new THREE.SphereGeometry(radius, 8, 6),
-    wireframe: 'full',
+    geometry: new THREE.IcosahedronGeometry(radius),
     halfHeight: radius,
     ringRadius: radius * 1.5,
   };
@@ -334,7 +329,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       if (!position || !shape) continue;
 
       const muted = !node.checkable || node.status === 'unknown';
-      const { geometry, wireframe: wireframeMode, halfHeight, ringRadius } = shape;
+      const { geometry, halfHeight, ringRadius } = shape;
 
       // An invisible solid twin carries the raycast hit-test: a bare wireframe
       // has almost no area to click, and picking one precisely would be
@@ -349,10 +344,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       pickable.push(hitTarget);
 
       const colour = STATUS_COLOURS[node.status];
-      const edges =
-        wireframeMode === 'edges'
-          ? new THREE.EdgesGeometry(geometry, 8)
-          : new THREE.WireframeGeometry(geometry);
+      const edges = new THREE.EdgesGeometry(geometry, 8);
       const lineMaterial = new THREE.LineBasicMaterial({
         color: colour,
         transparent: true,
