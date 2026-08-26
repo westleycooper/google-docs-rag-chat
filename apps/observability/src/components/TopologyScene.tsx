@@ -66,6 +66,18 @@ const TIER_Y: Record<string, number> = {
   service: 0.6,
   datastore: -1.5,
   external: -3.4,
+  // Non-checkable nodes (infra, tooling) get their own row below everything
+  // else, rather than sharing the "service" row. They used to sit at the
+  // same y as api/rag-core/ingestion, which put them well within the Docker
+  // box's vertical span -- the box is an axis-aligned rectangle around
+  // frontend/observability/api/vectorstore, and frontend and observability
+  // are the only two members of their tier, so they sit at the far left and
+  // far right edges of the whole diagram; a box reaching both of them
+  // necessarily spans the full width of every row it crosses, catching
+  // whatever else happens to be in that row along the way. Moving these two
+  // below the box's y-range entirely sidesteps that rather than trying to
+  // carve a non-rectangular hole for them.
+  reference: -5.4,
 };
 
 const CONNECTOR_COLOUR = 0x4f7c78; // CONSOLE_LIGHT.secondary -- dark enough to read against a light background
@@ -236,7 +248,7 @@ const PX_PER_WORLD_UNIT = SINGLE_LINE_HEIGHT_PX / SINGLE_LINE_WORLD_HEIGHT;
 const makeLabel = (text: string, colour: string, subtext?: string): THREE.Sprite => {
   const scale = LABEL_CANVAS_SCALE;
   const font = `600 ${26 * scale}px Inter, -apple-system, sans-serif`;
-  const subFont = `500 ${18 * scale}px Inter, -apple-system, sans-serif`;
+  const subFont = `500 ${21 * scale}px Inter, -apple-system, sans-serif`;
 
   const measure = document.createElement('canvas').getContext('2d');
   let textWidth = text.length * 16;
@@ -251,7 +263,7 @@ const makeLabel = (text: string, colour: string, subtext?: string): THREE.Sprite
   }
   const width = Math.ceil(Math.max(textWidth, subtextWidth) + 24 * scale);
   const mainLineHeight = 34 * scale;
-  const subLineHeight = subtext ? 26 * scale : 0;
+  const subLineHeight = subtext ? 30 * scale : 0;
   const verticalPadding = subtext ? 12 * scale : 0;
   const height = subtext
     ? mainLineHeight + subLineHeight + verticalPadding
@@ -416,10 +428,11 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     });
     controls.update();
 
-    // Lay each tier out evenly across the x axis.
+    // Lay each tier out evenly across the x axis. Non-checkable nodes route
+    // to their own "reference" row (see TIER_Y) regardless of kind.
     const byTier = new Map<string, ComponentNode[]>();
     for (const node of nodes) {
-      const tier = node.kind;
+      const tier = node.checkable ? node.kind : 'reference';
       byTier.set(tier, [...(byTier.get(tier) ?? []), node]);
     }
 
