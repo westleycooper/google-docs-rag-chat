@@ -13,10 +13,12 @@ import logging
 from collections.abc import Sequence
 
 import voyageai
+import voyageai.error
 from voyageai.client_async import AsyncClient
 
 from ragoogle_core.retrieval.embedding import EmbeddingSpec, EmbeddingVector
 from ragoogle_core.shared.errors import ConfigurationError
+from ragoogle_infra.vendor_retry import with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,7 @@ class VoyageEmbeddingProvider:
         model: str = DEFAULT_MODEL,
         dimensions: int = 1024,
         client: object | None = None,
-        max_concurrency: int = 4,
+        max_concurrency: int = 2,
     ) -> None:
         if dimensions not in VOYAGE_DIMENSIONS:
             raise ConfigurationError(
@@ -86,14 +88,7 @@ class VoyageEmbeddingProvider:
 
         async def run(batch: list[str]) -> list[list[float]]:
             async with self._gate:
-                result = await self._client.embed(  # type: ignore[attr-defined]
-                    batch,
-                    model=self._spec.model,
-                    input_type=input_type,
-                    output_dimension=self._spec.dimensions,
-                    truncation=True,
-                )
-                return list(result.embeddings)
+                return await self._embed_with_retry(batch, input_type)
 
         # Ordering is part of the contract: callers zip vectors against chunks,
         # so gather (which preserves input order) rather than as_completed.
@@ -103,3 +98,20 @@ class VoyageEmbeddingProvider:
             for batch in results
             for raw in batch
         ]
+
+    async def _embed_with_retry(self, batch: list[str], input_type: str) -> list[list[float]]:
+        async def call() -> list[list[float]]:
+            result = await self._client.embed(  # type: ignore[attr-defined]
+                batch,
+                model=self._spec.model,
+                input_type=input_type,
+                output_dimension=self._spec.dimensions,
+                truncation=True,
+            )
+            return list(result.embeddings)
+
+        return await with_backoff(
+            call,
+            retry_on=voyageai.error.RateLimitError,
+            description=f"voyage embed ({len(batch)} texts)",
+        )

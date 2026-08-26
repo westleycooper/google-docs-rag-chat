@@ -38,12 +38,21 @@ Judge faithfulness against the sources alone. Where an expected answer is given,
 use it for relevance -- not to penalise wording that differs but says the same
 thing."""
 
+# Structured outputs rejects `minimum`/`maximum` on a number
+# ("For 'number' type, properties maximum, minimum are not supported"), so the
+# range is stated in each description for the model and enforced by clamping on
+# the way out. The domain's Score refuses anything outside [0, 1] regardless, so
+# a model that ignored the instruction would raise rather than record a bad
+# score -- but a clamp gives a usable result instead of failing a whole run over
+# a rounding artefact like 1.0000001.
+_UNIT = "A score from 0.0 to 1.0 inclusive."
+
 _SCHEMA: dict[str, object] = {
     "type": "object",
     "properties": {
-        "faithfulness": {"type": "number", "minimum": 0, "maximum": 1},
-        "answer_relevance": {"type": "number", "minimum": 0, "maximum": 1},
-        "citation_correctness": {"type": "number", "minimum": 0, "maximum": 1},
+        "faithfulness": {"type": "number", "description": _UNIT},
+        "answer_relevance": {"type": "number", "description": _UNIT},
+        "citation_correctness": {"type": "number", "description": _UNIT},
         "rationale": {"type": "string"},
     },
     "required": [

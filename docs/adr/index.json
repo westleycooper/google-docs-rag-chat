@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "generator": "tools/adr/adr.py",
   "generatedFrom": "docs/adr/*.md",
-  "count": 13,
+  "count": 14,
   "byComponent": {
     "platform": 1,
-    "rag-core": 5,
+    "rag-core": 6,
     "ingestion": 1,
     "infra": 1,
     "tooling": 1,
@@ -14,7 +14,7 @@
   },
   "byStatus": {
     "proposed": 0,
-    "accepted": 13,
+    "accepted": 14,
     "rejected": 0,
     "deprecated": 0,
     "superseded": 0
@@ -293,6 +293,27 @@
       "supersededBy": [],
       "summary": "We will use **Voyage `rerank-2.5`** by default, behind the existing `Reranker` port, and treat a self-hosted adapter as a supported configuration rather than a hypothetical one.",
       "path": "docs/adr/0013-hosted-reranker-with-a-self-hosted-escape-hatch.md"
+    },
+    {
+      "id": 14,
+      "ref": "ADR-0014",
+      "title": "Retry vendor rate limits with a delay floor, not full jitter from zero",
+      "status": "accepted",
+      "date": "2026-08-26",
+      "component": "rag-core",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "reliability",
+        "rate-limits",
+        "vendors",
+        "backoff"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "We will retry rate limits with exponential backoff, jittered **between a floor and the ceiling** rather than between zero and the ceiling.",
+      "path": "docs/adr/0014-backoff-with-a-delay-floor-for-windowed-rate-limits.md"
     }
   ],
   "errors": []

@@ -173,6 +173,17 @@ tests against real Postgres.
 Integration tests and the Terraform gate skip cleanly when Postgres or Docker
 are absent, so a fresh checkout still gets a meaningful signal.
 
+Vendor smoke tests are separate, because they cost money and need network:
+
+```bash
+uv run python tools/smoke/vendors.py     # real Voyage + Claude calls
+```
+
+They verify what stubs cannot: that the vendors agree with the shape the
+adapters expect. Both bugs they have caught so far — a structured-output schema
+the API rejects, and a rate limit the retry policy could not clear — were
+invisible to every unit test.
+
 Postgres runs on **5433** to avoid colliding with a local install.
 
 ### Decisions
@@ -221,17 +232,46 @@ is generated identically wherever it runs.
 
 ---
 
+## Ingesting a local folder
+
+Google Drive is not the only source. `LocalDirectorySource` implements the same
+port, which is what makes ADR-0001's "not just Google Docs" claim checkable
+rather than aspirational — a port with one implementation is a guess about a
+boundary.
+
+```bash
+uv run python tools/ingest/local.py ./docs/adr --name "Architecture decisions"
+```
+
+Same use case, same chunker, same embedding provider, same vector store as a
+Drive run. Only the `DocumentSource` differs. Unreadable files are skipped with
+an audit record naming the OS user, exactly as a denied Drive folder is.
+
+## Rate limits
+
+One question costs two Voyage calls (embed + rerank), and ingestion costs one
+per batch. Both are retried with backoff — but the backoff has a **delay floor**
+rather than jittering from zero, because a vendor rate limit is usually a budget
+over a *window*, and a retry inside a spent window cannot succeed. The reasoning
+is in [ADR-0014](docs/adr/0014-backoff-with-a-delay-floor-for-windowed-rate-limits.md).
+
+On a Voyage **free-tier** key (10,000 tokens/minute) a 50-candidate rerank
+exceeds the budget in a single request, which no retry policy can rescue. Set
+`RAGOOGLE_CANDIDATE_LIMIT=12` or add a payment method.
+
 ## Current limitations
 
 Stated plainly, because a README that only lists what works is not much use:
 
-- **No cross-encoder reranker adapter yet.** The port and configuration exist;
-  retrieval currently degrades to fused RRF order and says so in each turn's
-  `degraded` list rather than hiding it.
-- **Google Drive is the only source adapter.** The `DocumentSource` port has no
-  Drive-specific vocabulary, so a second provider is an adapter rather than a
-  refactor — but nobody has written one.
-- **Vendor calls are unexercised by CI.** The Voyage and Claude adapters are
-  type-checked and unit-tested against fakes; no test makes a real API call.
 - **Terraform is validated, not applied.** All six targets pass `validate`
   against real provider schemas. Nothing has been deployed to a live cloud.
+- **Vendor calls are exercised on demand, not in CI.**
+  `tools/smoke/vendors.py` makes real Voyage and Claude calls and passes, but it
+  costs money and needs network, so it is not part of `check.sh`.
+- **The reranker is hosted, not self-hosted.** Chunk text leaves your
+  infrastructure to be reranked. For a confidential corpus that matters, and
+  [ADR-0013](docs/adr/0013-hosted-reranker-with-a-self-hosted-escape-hatch.md)
+  records the escape hatch.
+- **One retrieval round per question.** The trace can express branching and the
+  UI escalates to a graph view when it sees it, but no graph node currently
+  re-queries after weak recall.

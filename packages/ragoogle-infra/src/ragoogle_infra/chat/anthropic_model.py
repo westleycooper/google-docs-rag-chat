@@ -13,6 +13,7 @@ import anthropic
 from anthropic.types import MessageParam, TextBlockParam
 
 from ragoogle_core.ports.chat_model import ModelReply, ModelSpec
+from ragoogle_core.shared.errors import ConfigurationError
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +43,19 @@ class _Base:
         # A bare AsyncAnthropic() resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN
         # or an `ant auth login` profile, so an unset key does not mean no
         # credentials. Only pass api_key when one was configured explicitly.
-        self._client = client or (
-            anthropic.AsyncAnthropic(api_key=api_key) if api_key else anthropic.AsyncAnthropic()
-        )
+        try:
+            self._client = client or (
+                anthropic.AsyncAnthropic(api_key=api_key) if api_key else anthropic.AsyncAnthropic()
+            )
+        except TypeError as error:
+            # The SDK raises a bare TypeError when it can resolve no credential
+            # at all. Left alone that surfaces as a 500 with a stack trace, which
+            # tells an operator nothing about the one thing they need to fix.
+            raise ConfigurationError(
+                "no Anthropic credential could be resolved. Set "
+                "RAGOOGLE_ANTHROPIC_API_KEY (or ANTHROPIC_API_KEY), or sign in "
+                f"with `ant auth login`. The SDK reported: {error}"
+            ) from error
 
 
 class AnthropicChatModel(_Base):

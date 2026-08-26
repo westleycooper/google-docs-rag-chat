@@ -17,11 +17,14 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
+from typing import Any
 
+import voyageai.error
 from voyageai.client_async import AsyncClient
 
 from ragoogle_core.retrieval.chunk import Chunk
 from ragoogle_core.retrieval.ranking import Candidate, RetrievalMethod
+from ragoogle_infra.vendor_retry import with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +65,22 @@ class VoyageReranker:
             )
             candidates = candidates[:MAX_DOCUMENTS]
 
-        response = await self._client.rerank(  # type: ignore[attr-defined]
-            query=query,
-            documents=[c.text for c in candidates],
-            model=self._model,
-            top_k=min(limit, len(candidates)),
-            truncation=True,
+        # The reranker sits on the hot path of every question, so a rate limit
+        # here fails a user's query rather than a background job. Same backoff
+        # as the embedder, via the shared helper.
+        async def call() -> Any:
+            return await self._client.rerank(  # type: ignore[attr-defined]
+                query=query,
+                documents=[c.text for c in candidates],
+                model=self._model,
+                top_k=min(limit, len(candidates)),
+                truncation=True,
+            )
+
+        response = await with_backoff(
+            call,
+            retry_on=voyageai.error.RateLimitError,
+            description=f"voyage rerank ({len(candidates)} candidates)",
         )
 
         return [

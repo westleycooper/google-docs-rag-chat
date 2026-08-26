@@ -95,18 +95,25 @@ async def check_anthropic_chat() -> str:
     from ragoogle_infra.chat.anthropic_model import AnthropicChatModel
 
     model = AnthropicChatModel()
+    # Long enough that incremental delivery is observable. A one-word answer
+    # legitimately arrives as a single delta, so asserting on a short reply
+    # would be asserting something the API never promised.
     parts = [
         part
         async for part in model.stream(
-            system="Answer in exactly one short sentence.",
-            messages=[("user", "What is the capital of France?")],
+            system="Answer in three or four full sentences.",
+            messages=[("user", "Why is Paris the capital of France?")],
             model_id="claude-opus-5",
-            max_tokens=256,
+            max_tokens=512,
         )
     ]
     text = "".join(parts)
-    assert len(parts) > 1, "streamed incrementally rather than in one block"
-    assert "paris" in text.lower(), f"unexpected answer: {text!r}"
+    assert parts, "the stream yielded nothing"
+    assert len(parts) > 1, (
+        f"a {len(text)}-character reply arrived as one delta; the stream is "
+        f"buffering rather than streaming"
+    )
+    assert "paris" in text.lower(), f"unexpected answer: {text[:120]!r}"
     return f"{len(parts)} deltas, {len(text)} chars"
 
 
