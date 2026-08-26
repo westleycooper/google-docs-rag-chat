@@ -29,41 +29,32 @@ import {
 import { TopologyScene } from '@/components/TopologyScene';
 import { fetchTopology, type ComponentNode, type NodeStatus, type Topology } from '@/api/topology';
 
-// The chat app's default preset -- Retro Teal (see apps/frontend/src/theme.ts)
-// -- duplicated by hex value rather than imported: the two apps are
-// independent packages with no shared design-tokens package between them, and
-// one flat file of colour constants is not worth introducing a workspace
-// dependency for. Unlike the chat app, this page has no picker: it is a
-// single-purpose live dashboard, not a surface where "make a choice" belongs,
-// so it always renders in the product's default look.
-const APP_BAR_GRADIENT = 'linear-gradient(90deg, #071613 0%, #0F3A33 50%, #071613 100%)';
-const BODY_SCANLINES =
-  'repeating-linear-gradient(180deg, rgba(45, 212, 191, 0.05) 0px, ' +
-  'rgba(45, 212, 191, 0.05) 1px, transparent 1px, transparent 6px)';
-
+// The chat app's default preset -- Console (Light) (see
+// apps/frontend/src/theme.ts) -- duplicated by hex value rather than
+// imported: the two apps are independent packages with no shared
+// design-tokens package between them, and one flat file of colour constants
+// is not worth introducing a workspace dependency for. Unlike the chat app,
+// this page has no picker: it is a single-purpose live dashboard, not a
+// surface where "make a choice" belongs, so it always renders in the
+// product's default look -- which means this block goes stale every time
+// that default changes and has to be updated by hand; there is no test that
+// would catch the two drifting apart.
 const theme = createTheme({
   palette: {
-    mode: 'dark',
-    background: { default: '#071613', paper: '#0D211C' },
-    primary: { main: '#2DD4BF' },
-    secondary: { main: '#2DD4BF' },
-    error: { main: '#F97362' },
-    warning: { main: '#FBBF24' },
-    success: { main: '#34D399' },
-    info: { main: '#22D3EE' },
-    text: { primary: '#E4FFFB', secondary: '#8FBDB4' },
+    mode: 'light',
+    background: { default: '#F7F7F5', paper: '#FFFFFF' },
+    primary: { main: '#1C2B33' },
+    secondary: { main: '#4F7C78' },
+    error: { main: '#B4322F' },
+    warning: { main: '#B8860B' },
+    success: { main: '#3F7D52' },
+    info: { main: '#3E6B99' },
+    text: { primary: '#1F2D36', secondary: '#5C6A72' },
   },
   shape: { borderRadius: 10 },
   typography: {
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, sans-serif',
     button: { textTransform: 'none' },
-  },
-  components: {
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: { backgroundImage: BODY_SCANLINES, backgroundAttachment: 'fixed' },
-      },
-    },
   },
 });
 
@@ -122,7 +113,7 @@ export const App = () => {
             py: 1.5,
             borderBottom: 1,
             borderColor: 'divider',
-            backgroundImage: APP_BAR_GRADIENT,
+            bgcolor: 'background.paper',
           }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700 }}>

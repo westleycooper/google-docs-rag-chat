@@ -11,11 +11,10 @@
  * for them.
  *
  * Nodes render as unfilled wireframes rather than solid shapes — a plain
- * line-art look reads better against the scanline background than a lit,
- * filled mesh, and it means a node's silhouette never fights its status
- * colour for attention. A node still carries an invisible solid twin for
- * raycasting: a pure line has near-zero hit area, and picking one exactly
- * would be unreasonably fussy.
+ * line-art look stays legible regardless of which theme is active, and it
+ * means a node's silhouette never fights its status colour for attention. A
+ * node still carries an invisible solid twin for raycasting: a pure line has
+ * near-zero hit area, and picking one exactly would be unreasonably fussy.
  *
  * The camera is user-driven (OrbitControls) rather than auto-rotating: once a
  * viewer can grab the scene themselves, ambient motion only fights their drag.
@@ -29,15 +28,22 @@ import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import type { ComponentNode, NodeStatus } from '@/api/topology';
 
-// The Retro Teal family from App.tsx's MUI theme and the chat app's default
-// preset (apps/frontend/src/theme.ts): teal, amber, coral, muted teal-grey --
-// dusty and desaturated rather than the stock traffic-light red/amber/green.
+// Matches App.tsx's MUI theme and the chat app's default preset, Console
+// (Light) (apps/frontend/src/theme.ts CONSOLE_LIGHT.statusColours) -- kept in
+// hex here for the same reason App.tsx duplicates its palette instead of
+// importing it (see the comment there): the WebGL canvas is a separate
+// rendering context the MUI theme object cannot reach into anyway.
 const STATUS_COLOURS: Record<NodeStatus, number> = {
-  ok: 0x34d399,
-  degraded: 0xfbbf24,
-  down: 0xf97362,
-  unknown: 0x3a5049,
+  ok: 0x3f7d52,
+  degraded: 0xb8860b,
+  down: 0xb4322f,
+  unknown: 0x7a8790,
 };
+
+// The page background (CONSOLE_LIGHT.background.default) -- the renderer's
+// clear colour and the fog both match it exactly, so the canvas blends into
+// the surrounding page rather than sitting in its own dark box.
+const SCENE_BACKGROUND = 0xf7f7f5;
 
 /** Pulses per second. Healthy is still; trouble draws the eye. */
 const STATUS_PULSE: Record<NodeStatus, number> = {
@@ -54,8 +60,10 @@ const TIER_Y: Record<string, number> = {
   external: -3.4,
 };
 
-const CONNECTOR_COLOUR = 0x5fd4c0; // bright enough to read against the near-black background
+const CONNECTOR_COLOUR = 0x4f7c78; // CONSOLE_LIGHT.secondary -- dark enough to read against a light background
 const CONNECTOR_WIDTH_PX = 2.5;
+
+const SELECTION_COLOUR = 0x1c2b33; // CONSOLE_LIGHT.primary -- a dark ring is the strong outline on a light page
 
 /** Shrinks every primitive below by the same factor -- "the same shapes as
  * before, a bit smaller." */
@@ -142,6 +150,10 @@ const makeLabel = (text: string, colour: string): THREE.Sprite => {
     ctx.textBaseline = 'middle';
     // A rounded plate behind the text so a label crossing an edge line stays
     // readable.
+    // Deliberately a dark plate regardless of the surrounding page theme --
+    // it is a self-contained floating badge (like a map pin label), not a
+    // themed surface, and a dark plate is the one choice that stays legible
+    // whether the scene behind it is light or dark.
     ctx.fillStyle = 'rgba(11, 15, 25, 0.82)';
     ctx.beginPath();
     ctx.roundRect(0, 0, width, height, 10 * scale);
@@ -201,7 +213,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const height = mount.clientHeight || 500;
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x071613, 12, 30); // near-black teal, matching the MUI background
+    scene.fog = new THREE.Fog(SCENE_BACKGROUND, 12, 30);
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
     camera.position.set(0, -0.3, 12.5);
 
@@ -213,7 +225,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x071613, 1);
+    renderer.setClearColor(SCENE_BACKGROUND, 1);
     renderer.domElement.style.cursor = 'grab';
     mount.appendChild(renderer.domElement);
 
@@ -341,12 +353,12 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
         pulsing.push({ material: lineMaterial, rate, base: 0.55 });
       }
 
-      const label = makeLabel(node.label, muted ? '#8FBDB4' : '#E4FFFB');
+      const label = makeLabel(node.label, muted ? '#A8B0AE' : '#FFFFFF');
       label.position.set(position.x, position.y - halfHeight - 0.27, position.z);
       group.add(label);
 
       if (node.id === selectedId) {
-        const ring = makeSelectionRing(ringRadius, 0x2dd4bf); // bright teal, matches MUI primary
+        const ring = makeSelectionRing(ringRadius, SELECTION_COLOUR);
         ring.position.copy(position);
         group.add(ring);
       }
