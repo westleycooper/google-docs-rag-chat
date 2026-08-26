@@ -75,3 +75,19 @@ describe('parseFrame', () => {
     });
   });
 });
+
+describe('parseFrame CRLF handling', () => {
+  // sse-starlette (the API's SSE server) sends \r\n line endings. The SSE spec
+  // permits \r\n, lone \r, or \n as a line terminator -- a client that only
+  // handles \n silently drops every frame, and does so without throwing, which
+  // is what made this bug invisible to every test that fed it a plain string.
+  it('parses a frame with CRLF line endings', () => {
+    const frame = parseFrame('event: delta\r\ndata: {"text":"hello"}');
+    expect(frame).toEqual({ type: 'delta', text: 'hello' });
+  });
+
+  it('parses a frame with lone CR line endings', () => {
+    const frame = parseFrame('event: delta\rdata: {"text":"hello"}');
+    expect(frame).toEqual({ type: 'delta', text: 'hello' });
+  });
+});

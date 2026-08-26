@@ -2,19 +2,19 @@
   "schemaVersion": 1,
   "generator": "tools/adr/adr.py",
   "generatedFrom": "docs/adr/*.md",
-  "count": 14,
+  "count": 15,
   "byComponent": {
     "platform": 1,
     "rag-core": 6,
     "ingestion": 1,
     "infra": 1,
     "tooling": 1,
-    "frontend": 2,
+    "frontend": 3,
     "vectorstore": 2
   },
   "byStatus": {
     "proposed": 0,
-    "accepted": 14,
+    "accepted": 15,
     "rejected": 0,
     "deprecated": 0,
     "superseded": 0
@@ -314,6 +314,27 @@
       "supersededBy": [],
       "summary": "We will retry rate limits with exponential backoff, jittered **between a floor and the ceiling** rather than between zero and the ceiling.",
       "path": "docs/adr/0014-backoff-with-a-delay-floor-for-windowed-rate-limits.md"
+    },
+    {
+      "id": 15,
+      "ref": "ADR-0015",
+      "title": "The SSE client must tolerate any spec-legal line ending, not just LF",
+      "status": "accepted",
+      "date": "2026-08-26",
+      "component": "frontend",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "sse",
+        "streaming",
+        "bug",
+        "testing"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "`streamChat`'s buffer handling and `parseFrame` both normalise line endings to `\\n` before doing any `\\n`-based parsing, and both are covered by tests that exercise the failure mode directly rather than only the parser's happy path.",
+      "path": "docs/adr/0015-sse-client-must-tolerate-any-spec-legal-line-ending.md"
     }
   ],
   "errors": []

@@ -43,7 +43,13 @@ export const parseFrame = (block: string): ChatFrame | null => {
   let event = '';
   const dataLines: string[] = [];
 
-  for (const line of block.split('\n')) {
+  // Normalised here too, not only in streamChat's buffer handling, so the
+  // function is correct when called on its own -- e.g. in a test, or a future
+  // caller that has not already normalised. A \r\n split exactly at a chunk
+  // boundary is streamChat's problem to solve (it owns the buffer across
+  // reads); a lone \r *within* an already-complete block has nothing left to
+  // wait for, so normalising it unconditionally here is safe.
+  for (const line of block.replace(/\r\n|\r/g, '\n').split('\n')) {
     if (line.startsWith('event:')) event = line.slice(6).trim();
     // Multi-line data is joined with newlines, per the SSE spec — a JSON
     // payload containing a newline would otherwise be truncated.
@@ -124,12 +130,36 @@ export async function* streamChat(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  // Set when the buffer's final character was a lone \r that has not yet been
+  // normalised, because it might be the first half of a \r\n pair whose \n
+  // arrives in the *next* chunk. Normalising it immediately -- as a first
+  // attempt at this did -- commits to "lone \r line ending" before that is
+  // known, and turns an ordinary line break into a spurious blank-line
+  // separator the instant the next chunk's leading \n is appended. This
+  // mirrors how `TextDecoder({ stream: true })` withholds a split multi-byte
+  // UTF-8 sequence until the byte that completes it arrives.
+  let pendingCR = false;
+
+  const normalise = (done: boolean) => {
+    if (pendingCR) {
+      buffer = '\r' + buffer;
+      pendingCR = false;
+    }
+    // The SSE spec permits \r\n, lone \r, or \n as a line terminator, and a
+    // server is free to use any of them -- sse-starlette sends \r\n.
+    if (!done && buffer.endsWith('\r')) {
+      buffer = buffer.slice(0, -1);
+      pendingCR = true;
+    }
+    buffer = buffer.replace(/\r\n|\r/g, '\n');
+  };
 
   try {
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
+      normalise(false);
 
       let separator = buffer.indexOf('\n\n');
       while (separator !== -1) {
@@ -139,6 +169,10 @@ export async function* streamChat(
         separator = buffer.indexOf('\n\n');
       }
     }
+    // Stream finished: any withheld \r was never going to be joined by a \n,
+    // so it is now safe -- the only safe time -- to normalise it as a line
+    // ending in its own right.
+    normalise(true);
     // A final frame with no trailing blank line still counts.
     const tail = parseFrame(buffer);
     if (tail) yield tail;
