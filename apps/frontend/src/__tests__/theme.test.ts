@@ -23,8 +23,8 @@ afterEach(() => {
 });
 
 describe('theme registry', () => {
-  it('defaults to Retro Teal', () => {
-    expect(DEFAULT_THEME_ID).toBe('retroTeal');
+  it('defaults to Console (Light)', () => {
+    expect(DEFAULT_THEME_ID).toBe('consoleLight');
   });
 
   it('lists every preset id exactly once', () => {
@@ -46,6 +46,10 @@ describe('theme registry', () => {
     expect(buildTheme('retroTeal').appBarBackground).toContain('gradient');
     expect(buildTheme('wesAndersonLight').bodyBackgroundImage).toBeUndefined();
     expect(buildTheme('wesAndersonDark').appBarBackground).toBeUndefined();
+    expect(buildTheme('consoleLight').bodyBackgroundImage).toBeUndefined();
+    expect(buildTheme('consoleLight').appBarBackground).toBeUndefined();
+    expect(buildTheme('consoleDark').bodyBackgroundImage).toBeUndefined();
+    expect(buildTheme('consoleDark').appBarBackground).toBeUndefined();
   });
 
   it('ties secondary to the retrieved context colour in every preset', () => {

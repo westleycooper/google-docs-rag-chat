@@ -11,9 +11,14 @@ import { createTheme, type PaletteOptions, type ThemeOptions } from '@mui/materi
  * already calls `useTheme()` gets the current preset's colours for free.
  */
 
-export type ThemeId = 'retroTeal' | 'wesAndersonLight' | 'wesAndersonDark';
+export type ThemeId =
+  | 'consoleLight'
+  | 'consoleDark'
+  | 'retroTeal'
+  | 'wesAndersonLight'
+  | 'wesAndersonDark';
 
-export const DEFAULT_THEME_ID: ThemeId = 'retroTeal';
+export const DEFAULT_THEME_ID: ThemeId = 'consoleLight';
 
 export interface ContextColours {
   system: string;
@@ -60,6 +65,69 @@ declare module '@mui/material/styles' {
     bodyBackgroundImage?: string | undefined;
   }
 }
+
+// Modelled on Anthropic's own console (API keys / usage / billing): a flat,
+// near-white admin UI with a single muted teal accent and dark slate-navy for
+// the primary action, rather than a saturated brand colour doing all the
+// work. No gradients or textures -- the whole point of this preset is to look
+// like restrained enterprise software, not a themed app.
+const CONSOLE_LIGHT: ThemePreset = {
+  label: 'Console (Light)',
+  palette: {
+    mode: 'light',
+    background: { default: '#F7F7F5', paper: '#FFFFFF' },
+    primary: { main: '#1C2B33' }, // dark slate-navy -- the filled CTA colour
+    secondary: { main: '#4F7C78' }, // muted teal -- nav selection / accents
+    error: { main: '#B4322F' },
+    warning: { main: '#B8860B' },
+    success: { main: '#3F7D52' },
+    info: { main: '#3E6B99' },
+    text: { primary: '#1F2D36', secondary: '#5C6A72' },
+  },
+  contextColours: {
+    system: '#7A8790',
+    pinned: '#9C3D33',
+    history: '#3E6B99',
+    retrieved: '#4F7C78',
+  },
+  statusColours: {
+    ok: '#3F7D52',
+    degraded: '#B8860B',
+    down: '#B4322F',
+    unknown: '#7A8790',
+  },
+};
+
+const CONSOLE_DARK: ThemePreset = {
+  label: 'Console (Dark)',
+  palette: {
+    mode: 'dark',
+    background: { default: '#12181A', paper: '#1A2224' },
+    // The light preset's CTA navy would nearly vanish against a dark
+    // background, so the roles swap emphasis: the teal carries the primary
+    // action here, brightened enough to read, and slate-blue takes the
+    // secondary/accent role the navy held in the light version.
+    primary: { main: '#5FA39D' },
+    secondary: { main: '#7C93A0' },
+    error: { main: '#E0685F' },
+    warning: { main: '#D9A441' },
+    success: { main: '#6FBF86' },
+    info: { main: '#6FA8D9' },
+    text: { primary: '#EDF2F1', secondary: '#9FB0B3' },
+  },
+  contextColours: {
+    system: '#8A97A0',
+    pinned: '#C97A52',
+    history: '#6FA8D9',
+    retrieved: '#7C93A0',
+  },
+  statusColours: {
+    ok: '#6FBF86',
+    degraded: '#D9A441',
+    down: '#E0685F',
+    unknown: '#8A97A0',
+  },
+};
 
 const RETRO_TEAL: ThemePreset = {
   label: 'Retro Teal',
@@ -154,13 +222,21 @@ const WES_ANDERSON_DARK: ThemePreset = {
 };
 
 export const THEME_PRESETS: Record<ThemeId, ThemePreset> = {
+  consoleLight: CONSOLE_LIGHT,
+  consoleDark: CONSOLE_DARK,
   retroTeal: RETRO_TEAL,
   wesAndersonLight: WES_ANDERSON_LIGHT,
   wesAndersonDark: WES_ANDERSON_DARK,
 };
 
 /** Order the picker lists them in. */
-export const THEME_IDS: ThemeId[] = ['retroTeal', 'wesAndersonLight', 'wesAndersonDark'];
+export const THEME_IDS: ThemeId[] = [
+  'consoleLight',
+  'consoleDark',
+  'retroTeal',
+  'wesAndersonLight',
+  'wesAndersonDark',
+];
 
 const shared: ThemeOptions = {
   shape: { borderRadius: 10 },
