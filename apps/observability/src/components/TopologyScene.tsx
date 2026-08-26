@@ -110,12 +110,23 @@ const NODE_ICONS: Record<string, IconComponent> = {
   tooling: BuildIcon,
 };
 
-/** Rasterises a real MUI icon (not a hand-drawn approximation) to a data URI
- * once, at a fixed colour -- the icon glyph itself never changes with status,
- * only the badge it sits on does, so one render per node id is enough. */
+/** Rasterises a real MUI icon (not a hand-drawn approximation) to a data URI.
+ *
+ * `renderToStaticMarkup` on an MUI icon emits Emotion's `<style>` tag ahead
+ * of the `<svg>` -- two sibling root elements, which is not a well-formed SVG
+ * document, so an `<img>` given that string as `src` fails to decode (and
+ * silently: no `onerror` handler, no console output, the badge just never
+ * gets its icon). The `<style>` block only exists to make `fill:currentColor`
+ * work via the component's `color`/`htmlColor` prop, which is exactly the
+ * mechanism that breaks once the stylesheet is gone -- so `fill` is set
+ * directly as a presentation attribute on the root `<svg>` instead, which
+ * every `<path>` here inherits without needing a stylesheet at all. */
 const iconDataUri = (Icon: IconComponent, colour: string): string => {
-  const markup = renderToStaticMarkup(<Icon htmlColor={colour} />);
-  return `data:image/svg+xml;base64,${btoa(markup)}`;
+  const markup = renderToStaticMarkup(<Icon />);
+  const svgStart = markup.indexOf('<svg');
+  const svg = svgStart >= 0 ? markup.slice(svgStart) : markup;
+  const coloured = svg.replace('<svg ', `<svg fill="${colour}" `);
+  return `data:image/svg+xml;base64,${btoa(coloured)}`;
 };
 
 /**
@@ -136,13 +147,17 @@ const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
   const colour = STATUS_COLOURS[node.status];
 
   if (ctx) {
+    // A dark fill with the full-brightness status colour as the rim, rather
+    // than the other way around -- a white icon needs a dark field to read
+    // clearly against, and the brighter rim still carries the same status
+    // signal at a glance.
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = colour;
+    ctx.fillStyle = new THREE.Color(colour).multiplyScalar(0.42).getStyle();
     ctx.fill();
 
     ctx.lineWidth = BADGE_CANVAS_SIZE * 0.045;
-    ctx.strokeStyle = new THREE.Color(colour).multiplyScalar(0.55).getStyle();
+    ctx.strokeStyle = colour;
     if (!node.checkable) ctx.setLineDash([BADGE_CANVAS_SIZE * 0.06, BADGE_CANVAS_SIZE * 0.045]);
     ctx.stroke();
     ctx.setLineDash([]);
@@ -167,6 +182,9 @@ const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
       ctx.drawImage(img, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize);
       texture.needsUpdate = true;
     };
+    // A plain tinted disc is a legible enough fallback that this should never
+    // be silent again the way the unhandled failure before this fix was.
+    img.onerror = () => console.warn(`topology: icon failed to rasterise for node ${node.id}`);
     img.src = iconDataUri(Icon, muted ? '#EEF2F1' : '#FFFFFF');
   }
 
