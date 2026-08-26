@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generator": "tools/adr/adr.py",
   "generatedFrom": "docs/adr/*.md",
-  "count": 17,
+  "count": 18,
   "byComponent": {
     "platform": 1,
     "rag-core": 6,
@@ -11,11 +11,11 @@
     "tooling": 1,
     "frontend": 3,
     "vectorstore": 2,
-    "observability": 1
+    "observability": 2
   },
   "byStatus": {
     "proposed": 0,
-    "accepted": 17,
+    "accepted": 18,
     "rejected": 0,
     "deprecated": 0,
     "superseded": 0
@@ -378,6 +378,27 @@
       "supersededBy": [],
       "summary": "**Split and check the vendors.** `platform` becomes two nodes, `anthropic` and `voyage`, each pinged independently (reusing the existing `_ping` helper) at a new `anthropic_ping_url` / `voyage_ping_url` setting. Neither vendor exposes an unauthenticated health endpoint, so these point at each vendor's public marketing site as the closest honest proxy for \"is anything answering there\" — not a claim about API status or key validity, the same standard `_ping` already holds `frontend`/`observability` to. `status.anthropic.com` was tried first and rejected: it 301-redirects on first hit, and `_ping` treats a redirect as `down` by design (a health probe silently redirected to e.g. a login page is exactly the false positive that rule exists to catch), so it read as permanently down regardless of Anthropic's actual status. Neither new node id is forced into the ADR `component` vocabulary — Voyage-related decisions are already tagged `rag-core`, where a real \"RAG Core\" node exists, so `anthropic`/`voyage` simply carry no ADRs rather than an incorrect one.",
       "path": "docs/adr/0017-separate-claude-voyage-liveness-and-mark-non-runtime-topolog.md"
+    },
+    {
+      "id": 18,
+      "ref": "ADR-0018",
+      "title": "Icon badges, a soft gradient backdrop, and click-to-open for the topology graph",
+      "status": "accepted",
+      "date": "2026-08-26",
+      "component": "observability",
+      "deciders": [
+        "Westley Cooper-Thorn"
+      ],
+      "tags": [
+        "topology",
+        "three.js",
+        "icons",
+        "ux"
+      ],
+      "supersedes": [],
+      "supersededBy": [],
+      "summary": "**Icon badges replace 3D primitives.** Every node is a billboarded circular sprite: a status-tinted fill, a darker ring (dashed when `checkable: false`, matching the existing \"reference, not polled\" treatment), and a real MUI icon rasterised on top -- not a hand-drawn approximation. Rasterising a professionally designed icon is more implementation than sketching a shape from canvas primitives, but the alternative was inventing brain/cloud/compass/server glyphs by eye with no way to preview the result in this session; a maintained icon set removes that risk entirely. The icon is rendered via `react-dom/server`'s `renderToStaticMarkup` to a static SVG string, base64-encoded into a data URI, loaded into an `Image`, and drawn onto the badge's canvas once it resolves -- fully offline (no font CDN, no network dependency), reusing `@mui/icons-material`, which was already a dependency. The mapping is per **node id**, not kind: `frontend`/`observability` both get the browser icon (`Web`) since both literally are one; `api` gets `Dns` (a server-rack glyph); `rag-core` gets `Hub`; `ingestion` gets `Input`; `vectorstore` gets `Storage`; `anthropic` gets `Psychology` (the literal \"brain\" icon requested); `voyage` gets `Explore` (a compass, fitting both the name and the embeddings-search job); `infra` gets `Cloud`; `tooling` gets `Build`.",
+      "path": "docs/adr/0018-icon-badges-a-soft-gradient-backdrop-and-click-to-open-for-t.md"
     }
   ],
   "errors": []

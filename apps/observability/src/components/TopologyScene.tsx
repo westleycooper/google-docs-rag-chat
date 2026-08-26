@@ -1,31 +1,44 @@
 /**
- * The live architecture graph (ADR-0006).
+ * The live architecture graph (ADR-0006, ADR-0018).
  *
  * Nodes are laid out in tiers by kind — frontends at the top, services in the
  * middle, datastores and external vendors at the bottom — so the shape of the
  * system is legible before any colour is read. Dependency edges connect them.
  *
- * Status is carried by colour *and* by pulse rate, not colour alone: roughly
- * one in twelve men has a red-green colour vision deficiency, and an
- * architecture dashboard whose only failure signal is "the red one" is unusable
- * for them.
+ * Status is carried by colour *and* by pulse, not colour alone: roughly one
+ * in twelve men has a red-green colour vision deficiency, and an
+ * architecture dashboard whose only failure signal is "the red one" is
+ * unusable for them.
  *
- * Nodes render as filled low-poly shapes with a darker edge outline on top --
- * solid enough that status colour reads clearly at a glance, with the outline
- * keeping each shape's silhouette crisp against its neighbours. The fill mesh
- * carries the raycast hit-test directly; no separate invisible proxy is
- * needed once the shape is solid rather than a bare line.
+ * Nodes render as icon badges (ADR-0018) rather than abstract 3D primitives:
+ * a real MUI icon rasterised onto a status-tinted circular sprite, so what a
+ * node *is* reads at a glance instead of needing colour or a legend to
+ * decode a shape. Every visible element here is a billboarded sprite (always
+ * facing the camera) rather than a lit 3D mesh, since a flat icon glyph only
+ * reads correctly face-on.
  *
  * The camera is user-driven (OrbitControls) rather than auto-rotating: once a
  * viewer can grab the scene themselves, ambient motion only fights their drag.
  */
 
 import { useEffect, useRef } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Line2 } from 'three/addons/lines/Line2.js';
 import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import BuildIcon from '@mui/icons-material/Build';
+import CloudIcon from '@mui/icons-material/Cloud';
+import DnsIcon from '@mui/icons-material/Dns';
+import ExploreIcon from '@mui/icons-material/Explore';
+import HubIcon from '@mui/icons-material/Hub';
+import InputIcon from '@mui/icons-material/Input';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import StorageIcon from '@mui/icons-material/Storage';
+import WebIcon from '@mui/icons-material/Web';
+import type { ComponentType } from 'react';
+import type { SvgIconProps } from '@mui/material';
 import type { ComponentNode, NodeStatus } from '@/api/topology';
 
 // Matches App.tsx's MUI theme and the chat app's default preset, Console
@@ -33,17 +46,12 @@ import type { ComponentNode, NodeStatus } from '@/api/topology';
 // hex here for the same reason App.tsx duplicates its palette instead of
 // importing it (see the comment there): the WebGL canvas is a separate
 // rendering context the MUI theme object cannot reach into anyway.
-const STATUS_COLOURS: Record<NodeStatus, number> = {
-  ok: 0x3f7d52,
-  degraded: 0xb8860b,
-  down: 0xb4322f,
-  unknown: 0x7a8790,
+const STATUS_COLOURS: Record<NodeStatus, string> = {
+  ok: '#3F7D52',
+  degraded: '#B8860B',
+  down: '#B4322F',
+  unknown: '#7A8790',
 };
-
-// The page background (CONSOLE_LIGHT.background.default) -- the renderer's
-// clear colour and the fog both match it exactly, so the canvas blends into
-// the surrounding page rather than sitting in its own dark box.
-const SCENE_BACKGROUND = 0xf7f7f5;
 
 /** Pulses per second. Healthy is still; trouble draws the eye. */
 const STATUS_PULSE: Record<NodeStatus, number> = {
@@ -63,64 +71,106 @@ const TIER_Y: Record<string, number> = {
 const CONNECTOR_COLOUR = 0x4f7c78; // CONSOLE_LIGHT.secondary -- dark enough to read against a light background
 const CONNECTOR_WIDTH_PX = 2.5;
 
-const SELECTION_COLOUR = 0x1c2b33; // CONSOLE_LIGHT.primary -- a dark ring is the strong outline on a light page
+// Explicitly requested: thicker than a standard outline, and a colour no
+// status or connector already uses, so "selected" never reads as "unhealthy."
+const SELECTION_COLOUR = '#CC5500';
+const SELECTION_STROKE_FRACTION = 0.09;
 
-/** Shrinks every primitive below by the same factor -- "the same shapes as
- * before, a bit smaller." */
-const NODE_SCALE = 0.8;
+const DOCKER_BLUE = 0x2496ed; // Docker's own brand colour
+/** The topology nodes that correspond to an actual container in
+ * docker-compose.yml, as opposed to a logical concept living inside one
+ * (rag-core/ingestion are code paths inside the api process, not services of
+ * their own) or something that isn't a container at all (the vendors,
+ * infra, tooling). */
+const DOCKERISED_NODE_IDS = ['frontend', 'observability', 'api', 'vectorstore'];
 
-interface NodeShape {
-  geometry: THREE.BufferGeometry;
-  /** Half the shape's vertical extent, for label placement below it. */
-  halfHeight: number;
-  /** Selection-ring radius, sized to sit just outside the shape. */
-  ringRadius: number;
-}
+/** Every node is the same size now that an icon, not a shape, carries the
+ * "what is this" signal -- varying size per kind would just be noise. */
+const BADGE_WORLD_SIZE = 0.85;
+const BADGE_RADIUS = BADGE_WORLD_SIZE / 2;
+const BADGE_CANVAS_SIZE = 160;
 
-/** Per-kind primitives, so shape still hints at role (readable even without
- * colour) -- box and sphere replaced with two more Platonic solids alongside
- * the octahedron external already used. Every shape here has real dihedral
- * angles between adjacent faces, so `THREE.EdgesGeometry` (silhouette edges
- * only) reads cleanly on all of them; a smooth sphere or a box's flat faces
- * used to need special-casing (a box's edges are fine, but a sphere has none
- * an edge-angle threshold will ever catch), which no longer applies now that
- * every shape is faceted by construction. For any `new THREE.XGeometry(radius)`
- * Platonic solid, `radius` is exactly the circumradius -- the same distance
- * from centre to vertex in every direction -- so using it directly as
- * `halfHeight` is exact, not an approximation. */
-const shapeFor = (kind: string): NodeShape => {
-  if (kind === 'datastore') {
-    const radius = 0.5 * NODE_SCALE;
-    const height = 0.7 * NODE_SCALE;
-    return {
-      geometry: new THREE.CylinderGeometry(radius, radius, height, 24),
-      halfHeight: height / 2,
-      ringRadius: radius * 1.5,
-    };
+type IconComponent = ComponentType<SvgIconProps>;
+
+/** One icon per node id (not per kind): the two frontend-kind nodes are both
+ * literally browsers, but the three service-kind nodes are different enough
+ * pieces of the system that lumping them under one icon would erase exactly
+ * the distinction shape used to carry. Falls back to a plain circle (no
+ * icon) for anything not listed rather than guessing. */
+const NODE_ICONS: Record<string, IconComponent> = {
+  frontend: WebIcon,
+  observability: WebIcon,
+  api: DnsIcon,
+  'rag-core': HubIcon,
+  ingestion: InputIcon,
+  vectorstore: StorageIcon,
+  anthropic: PsychologyIcon,
+  voyage: ExploreIcon,
+  infra: CloudIcon,
+  tooling: BuildIcon,
+};
+
+/** Rasterises a real MUI icon (not a hand-drawn approximation) to a data URI
+ * once, at a fixed colour -- the icon glyph itself never changes with status,
+ * only the badge it sits on does, so one render per node id is enough. */
+const iconDataUri = (Icon: IconComponent, colour: string): string => {
+  const markup = renderToStaticMarkup(<Icon htmlColor={colour} />);
+  return `data:image/svg+xml;base64,${btoa(markup)}`;
+};
+
+/**
+ * A node's badge: a status-tinted circle with a darker ring (dashed when the
+ * node isn't checkable) and the MUI icon for its id drawn on top. The icon
+ * loads asynchronously (SVG -> Image -> canvas), so the badge appears as a
+ * plain tinted disc for a frame or two before the glyph fills in -- there is
+ * no synchronous way to rasterise an SVG in a browser.
+ */
+const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
+  const canvas = document.createElement('canvas');
+  canvas.width = BADGE_CANVAS_SIZE;
+  canvas.height = BADGE_CANVAS_SIZE;
+  const ctx = canvas.getContext('2d');
+  const cx = BADGE_CANVAS_SIZE / 2;
+  const cy = BADGE_CANVAS_SIZE / 2;
+  const r = BADGE_CANVAS_SIZE * 0.42;
+  const colour = STATUS_COLOURS[node.status];
+
+  if (ctx) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = colour;
+    ctx.fill();
+
+    ctx.lineWidth = BADGE_CANVAS_SIZE * 0.045;
+    ctx.strokeStyle = new THREE.Color(colour).multiplyScalar(0.55).getStyle();
+    if (!node.checkable) ctx.setLineDash([BADGE_CANVAS_SIZE * 0.06, BADGE_CANVAS_SIZE * 0.045]);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
-  if (kind === 'external') {
-    const radius = 0.55 * NODE_SCALE;
-    return {
-      geometry: new THREE.OctahedronGeometry(radius),
-      halfHeight: radius,
-      ringRadius: radius * 1.5,
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    opacity: node.checkable ? 1 : 0.6,
+    depthTest: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(BADGE_WORLD_SIZE, BADGE_WORLD_SIZE, 1);
+
+  const Icon = NODE_ICONS[node.id];
+  if (Icon && ctx) {
+    const img = new Image();
+    img.onload = () => {
+      const iconSize = BADGE_CANVAS_SIZE * 0.46;
+      ctx.drawImage(img, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize);
+      texture.needsUpdate = true;
     };
+    img.src = iconDataUri(Icon, muted ? '#EEF2F1' : '#FFFFFF');
   }
-  if (kind === 'frontend') {
-    const radius = 0.5 * NODE_SCALE;
-    return {
-      geometry: new THREE.DodecahedronGeometry(radius),
-      halfHeight: radius,
-      ringRadius: radius * 1.5,
-    };
-  }
-  // service
-  const radius = 0.55 * NODE_SCALE;
-  return {
-    geometry: new THREE.IcosahedronGeometry(radius),
-    halfHeight: radius,
-    ringRadius: radius * 1.5,
-  };
+
+  return sprite;
 };
 
 /**
@@ -129,7 +179,7 @@ const shapeFor = (kind: string): NodeShape => {
  * Canvas-texture sprites rather than a text geometry: they always face the
  * camera, need no font loading, and stay crisp because the texture is drawn at
  * device resolution. An unlabelled architecture graph is decorative -- you
- * cannot tell which sphere just went red.
+ * cannot tell which badge just went red.
  */
 const makeLabel = (text: string, colour: string): THREE.Sprite => {
   const scale = 2;
@@ -173,20 +223,62 @@ const makeLabel = (text: string, colour: string): THREE.Sprite => {
   return sprite;
 };
 
-/** A thin circular outline -- the selection indicator, kept line-art like
- * everything else rather than a filled ring mesh. */
-const makeSelectionRing = (radius: number, colour: number): THREE.LineLoop => {
-  const points: THREE.Vector3[] = [];
-  const segments = 48;
-  for (let i = 0; i <= segments; i++) {
-    const angle = (i / segments) * Math.PI * 2;
-    points.push(new THREE.Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius, 0));
+/** The selection indicator: a thick ring sprite, sized just outside a badge.
+ * A sprite rather than a 3D ring mesh/line -- everything a badge sits next to
+ * needs to billboard the same way it does, or it visibly tilts away from the
+ * flat icon as the camera orbits. */
+const makeSelectionRing = (): THREE.Sprite => {
+  const size = 200;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.strokeStyle = SELECTION_COLOUR;
+    ctx.lineWidth = size * SELECTION_STROKE_FRACTION;
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size * 0.4, 0, Math.PI * 2);
+    ctx.stroke();
   }
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  return new THREE.LineLoop(
-    geometry,
-    new THREE.LineBasicMaterial({ color: colour, transparent: true, opacity: 0.9 }),
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }),
   );
+  sprite.scale.set(BADGE_WORLD_SIZE * 1.35, BADGE_WORLD_SIZE * 1.35, 1);
+  return sprite;
+};
+
+/** A soft light radial backdrop for the scene, rather than a flat fill --
+ * requested explicitly ("it needs to look good"), and kept subtle: a few
+ * percent of tint from centre to edge, not the kind of gradient ADR-0017
+ * ruled out for the page chrome. That decision was about the MUI theme's
+ * flat, no-texture surfaces; a soft depth cue behind a 3D scene is a
+ * different thing living in a different layer. */
+const makeBackground = (): { texture: THREE.CanvasTexture; edgeColour: number } => {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const centre = '#fcfcfb';
+  const edge = '#e7ecec';
+  if (ctx) {
+    const gradient = ctx.createRadialGradient(
+      size / 2,
+      size * 0.4,
+      0,
+      size / 2,
+      size / 2,
+      size * 0.75,
+    );
+    gradient.addColorStop(0, centre);
+    gradient.addColorStop(1, edge);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  return { texture, edgeColour: 0xe7ecec };
 };
 
 interface Props {
@@ -212,7 +304,9 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const height = mount.clientHeight || 500;
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(SCENE_BACKGROUND, 12, 30);
+    const background = makeBackground();
+    scene.background = background.texture;
+    scene.fog = new THREE.Fog(background.edgeColour, 13, 30);
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
     camera.position.set(0, -0.3, 12.5);
 
@@ -224,7 +318,6 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(SCENE_BACKGROUND, 1);
     renderer.domElement.style.cursor = 'grab';
     mount.appendChild(renderer.domElement);
 
@@ -241,11 +334,6 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       renderer.domElement.style.cursor = 'grab';
     });
     controls.update();
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const key = new THREE.DirectionalLight(0xffffff, 1.0);
-    key.position.set(5, 8, 6);
-    scene.add(key);
 
     // Lay each tier out evenly across the x axis.
     const byTier = new Map<string, ComponentNode[]>();
@@ -268,42 +356,29 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const group = new THREE.Group();
     scene.add(group);
 
-    // Computed once per node up front rather than inline in each loop below:
-    // the connector-edge loop needs every node's halfHeight to trim lines to
-    // the shape's surface, and the node loop needs the rest of it, so both
-    // read from the same map instead of building the geometry twice.
-    const shapes = new Map<string, NodeShape>();
-    for (const node of nodes) {
-      shapes.set(node.id, shapeFor(node.kind));
-    }
-
     // Fat lines need the viewport resolution in their material; every one
     // created gets tracked so a resize can update them all.
     const fatLineMaterials: LineMaterial[] = [];
     const resolution = new THREE.Vector2(width, height);
 
-    // Edges first so nodes draw over them. Trimmed to stop at each node's
-    // surface (approximated by its halfHeight, the same "how far this shape
-    // extends from its centre" figure used to place the label) rather than
-    // running center-to-center -- untrimmed, a line ran straight through the
-    // middle of a node's wireframe cage, visible on both sides of it instead
-    // of meeting its edge.
+    // Edges first so badges draw over them. Trimmed to stop at each node's
+    // badge radius (uniform now that every node is the same size) rather
+    // than running centre-to-centre, which would run a line straight through
+    // the middle of a badge instead of meeting its edge.
     for (const node of nodes) {
       const from = positions.get(node.id);
-      const fromShape = shapes.get(node.id);
-      if (!from || !fromShape) continue;
+      if (!from) continue;
       for (const dependency of node.depends_on) {
         const to = positions.get(dependency);
-        const toShape = shapes.get(dependency);
-        if (!to || !toShape) continue;
+        if (!to) continue;
 
         const direction = new THREE.Vector3().subVectors(to, from);
         const distance = direction.length();
-        const trimmed = distance - fromShape.halfHeight - toShape.halfHeight;
-        if (trimmed <= 0) continue; // shapes touch or overlap -- nothing to draw
+        const trimmed = distance - BADGE_RADIUS * 2;
+        if (trimmed <= 0) continue; // badges touch or overlap -- nothing to draw
         direction.normalize();
-        const start = from.clone().addScaledVector(direction, fromShape.halfHeight);
-        const end = to.clone().addScaledVector(direction, -toShape.halfHeight);
+        const start = from.clone().addScaledVector(direction, BADGE_RADIUS);
+        const end = to.clone().addScaledVector(direction, -BADGE_RADIUS);
 
         const geometry = new LineGeometry();
         geometry.setPositions([start.x, start.y, start.z, end.x, end.y, end.z]);
@@ -320,71 +395,82 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       }
     }
 
-    const pulsing: { material: THREE.MeshStandardMaterial; rate: number; base: number }[] = [];
-    const pickable: THREE.Mesh[] = [];
+    // A dashed frame around the nodes that are actually docker-compose
+    // containers (frontend, observability, api, vectorstore) -- rag-core and
+    // ingestion live inside the api process rather than as containers of
+    // their own, and the vendors/infra/tooling aren't containers at all, so
+    // the box is built from those four positions specifically rather than a
+    // whole tier.
+    const dockerPositions = DOCKERISED_NODE_IDS.map((id) => positions.get(id)).filter(
+      (p): p is THREE.Vector3 => p !== undefined,
+    );
+    if (dockerPositions.length > 0) {
+      const padXZ = 0.7;
+      const padY = 0.6;
+      const min = dockerPositions.reduce(
+        (acc, p) => acc.min(p),
+        dockerPositions[0]!.clone(),
+      );
+      const max = dockerPositions.reduce(
+        (acc, p) => acc.max(p),
+        dockerPositions[0]!.clone(),
+      );
+      const boxWidth = max.x - min.x + padXZ * 2;
+      const boxHeight = max.y - min.y + padY * 2;
+      const boxDepth = max.z - min.z + padXZ * 2;
+      const center = new THREE.Vector3(
+        (min.x + max.x) / 2,
+        (min.y + max.y) / 2,
+        (min.z + max.z) / 2,
+      );
+
+      const boxGeometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+      const boxEdges = new THREE.EdgesGeometry(boxGeometry);
+      const boxOutline = new THREE.LineSegments(
+        boxEdges,
+        new THREE.LineDashedMaterial({
+          color: DOCKER_BLUE,
+          transparent: true,
+          opacity: 0.55,
+          dashSize: 0.12,
+          gapSize: 0.09,
+        }),
+      );
+      boxOutline.position.copy(center);
+      boxOutline.computeLineDistances();
+      group.add(boxOutline);
+
+      const dockerLabel = makeLabel('Docker', '#4FC3F7');
+      dockerLabel.position.set(center.x - boxWidth / 2 + 0.55, center.y + boxHeight / 2 + 0.22, center.z);
+      group.add(dockerLabel);
+    }
+
+    const pulsing: { material: THREE.SpriteMaterial; rate: number; base: number }[] = [];
+    const pickable: THREE.Sprite[] = [];
 
     for (const node of nodes) {
       const position = positions.get(node.id);
-      const shape = shapes.get(node.id);
-      if (!position || !shape) continue;
+      if (!position) continue;
 
       const muted = !node.checkable || node.status === 'unknown';
-      const { geometry, halfHeight, ringRadius } = shape;
-      const colour = STATUS_COLOURS[node.status];
 
-      const fillMaterial = new THREE.MeshStandardMaterial({
-        color: colour,
-        emissive: colour,
-        emissiveIntensity: muted ? 0.08 : 0.35,
-        roughness: 0.45,
-        metalness: 0.12,
-        transparent: !node.checkable,
-        opacity: node.checkable ? 1 : 0.5,
-      });
-      const mesh = new THREE.Mesh(geometry, fillMaterial);
-      mesh.position.copy(position);
-      mesh.userData = { nodeId: node.id };
-      group.add(mesh);
-      pickable.push(mesh);
-
-      // A darker edge outline on top of the fill keeps each shape's
-      // silhouette crisp against its neighbours rather than relying on the
-      // fill colour alone to separate one node from the next.
-      const outlineColour = new THREE.Color(colour).multiplyScalar(0.55);
-      const edges = new THREE.EdgesGeometry(geometry, 8);
-      const outline = new THREE.LineSegments(
-        edges,
-        new THREE.LineBasicMaterial({ color: outlineColour, transparent: true, opacity: 0.9 }),
-      );
-      outline.position.copy(position);
-      if (!node.checkable) {
-        // A dashed outline reads as "reference only, nothing to poll" rather
-        // than "unknown, might be broken" -- the same grey as a genuinely
-        // unreachable node would otherwise be indistinguishable from a
-        // structurally non-live one (this is the "why is infra greyed out"
-        // question made visible instead of asked).
-        outline.material = new THREE.LineDashedMaterial({
-          color: outlineColour,
-          transparent: true,
-          opacity: 0.7,
-          dashSize: 0.06,
-          gapSize: 0.05,
-        });
-        outline.computeLineDistances();
-      }
-      group.add(outline);
+      const badge = makeBadge(node, muted);
+      badge.position.copy(position);
+      badge.userData = { nodeId: node.id };
+      group.add(badge);
+      pickable.push(badge);
 
       const rate = STATUS_PULSE[node.status];
       if (rate > 0 && !reduceMotion && node.checkable) {
-        pulsing.push({ material: fillMaterial, rate, base: 0.35 });
+        pulsing.push({ material: badge.material, rate, base: 0.65 });
       }
 
       const label = makeLabel(node.label, muted ? '#A8B0AE' : '#FFFFFF');
-      label.position.set(position.x, position.y - halfHeight - 0.27, position.z);
+      label.position.set(position.x, position.y - BADGE_RADIUS - 0.27, position.z);
       group.add(label);
 
       if (node.id === selectedId) {
-        const ring = makeSelectionRing(ringRadius, SELECTION_COLOUR);
+        const ring = makeSelectionRing();
         ring.position.copy(position);
         group.add(ring);
       }
@@ -400,7 +486,12 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       const hit = raycaster.intersectObjects(pickable)[0];
       const nodeId = hit?.object.userData.nodeId as string | undefined;
       const node = nodes.find((n) => n.id === nodeId);
-      if (node) selectRef.current(node);
+      if (!node) return;
+      selectRef.current(node);
+      // A direct result of the user's own click, not a delayed/async call --
+      // popup blockers only stop window.open() calls that aren't traceable
+      // to a real user gesture, which this always is.
+      if (node.url) window.open(node.url, '_blank', 'noopener,noreferrer');
     };
     renderer.domElement.addEventListener('click', onClick);
 
@@ -409,7 +500,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const render = () => {
       const elapsed = clock.getElapsedTime();
       for (const { material, rate, base } of pulsing) {
-        material.emissiveIntensity = base + 0.45 * (0.5 + 0.5 * Math.sin(elapsed * rate * Math.PI * 2));
+        material.opacity = base + 0.35 * (0.5 + 0.5 * Math.sin(elapsed * rate * Math.PI * 2));
       }
       controls.update();
       renderer.render(scene, camera);
@@ -434,13 +525,9 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       observer.disconnect();
       controls.dispose();
       renderer.domElement.removeEventListener('click', onClick);
+      background.texture.dispose();
       group.traverse((object) => {
-        if (
-          object instanceof THREE.Mesh ||
-          object instanceof THREE.Line ||
-          object instanceof THREE.LineSegments ||
-          object instanceof Line2
-        ) {
+        if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof Line2) {
           object.geometry.dispose();
           const material = object.material;
           if (Array.isArray(material)) material.forEach((m) => m.dispose());
