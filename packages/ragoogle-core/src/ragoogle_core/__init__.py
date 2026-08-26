@@ -1,4 +1,4 @@
-"""Ragoogle domain and application layers.
+"""RAGDrive domain and application layers.
 
 Layering (ADR-0001), enforced by tools/quality/layering.py:
 

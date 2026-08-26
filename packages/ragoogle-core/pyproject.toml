@@ -1,7 +1,7 @@
 [project]
 name = "ragoogle-core"
 version = "0.1.0"
-description = "Ragoogle domain and application layers. Standard library only, by design."
+description = "RAGDrive domain and application layers. Standard library only, by design."
 requires-python = ">=3.12"
 # ADR-0001: the domain layer imports only the standard library. This empty
 # dependency list is the first line of that enforcement; tools/quality/layering.py

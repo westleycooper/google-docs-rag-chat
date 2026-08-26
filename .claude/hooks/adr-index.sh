@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ragoogle PostToolUse hook: keep docs/adr/index.json in step with docs/adr/*.md.
+# RAGDrive PostToolUse hook: keep docs/adr/index.json in step with docs/adr/*.md.
 #
 # The index is the feed the observability app reads to render decisions against
 # the component they constrain, so it must never drift from the prose.

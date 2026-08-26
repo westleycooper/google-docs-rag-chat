@@ -16,7 +16,7 @@ from google.auth.credentials import Credentials
 from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials as OAuthCredentials
 
-# Read-only throughout. Ragoogle never needs to modify a corpus, and a narrower
+# Read-only throughout. RAGDrive never needs to modify a corpus, and a narrower
 # scope is the difference between a leaked credential being an exposure and
 # being a catastrophe.
 DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive.readonly",)

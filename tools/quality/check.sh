@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Every quality gate Ragoogle enforces, in one command.
+# Every quality gate RAGDrive enforces, in one command.
 #
 #   ./tools/quality/check.sh          # unit gates
 #   docker compose up -d postgres && export RAGOOGLE_TEST_DATABASE_URL=...

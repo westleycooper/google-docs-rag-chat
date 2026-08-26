@@ -51,7 +51,7 @@ export const App = () => {
         <AppBar position="static" color="default" variant="outlined" elevation={0}>
           <Toolbar variant="dense" sx={{ gap: 2 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Ragoogle
+              RAGDrive
             </Typography>
 
             <Tabs

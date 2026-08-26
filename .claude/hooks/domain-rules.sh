@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ragoogle PostToolUse hook: enforce the ADR-0001 layering rule at authoring time.
+# RAGDrive PostToolUse hook: enforce the ADR-0001 layering rule at authoring time.
 #
 # Deliberately runs only the layering gate, not the full suite: this fires on
 # every edit, so it must stay fast. ./tools/quality/check.sh is the full set.

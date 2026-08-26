@@ -33,7 +33,7 @@ class SourceCatalogue(Protocol):
 
 @runtime_checkable
 class DocumentCatalogue(Protocol):
-    """Documents Ragoogle has ingested."""
+    """Documents RAGDrive has ingested."""
 
     async def checksums(self, source_id: SourceId) -> dict[str, str | None]:
         """External id -> last-seen checksum, for the whole source.

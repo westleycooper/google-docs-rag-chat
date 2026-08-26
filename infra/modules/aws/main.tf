@@ -77,7 +77,7 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_security_group" "tasks" {
   name        = "sg-${local.prefix}-tasks"
-  description = "Ragoogle ECS tasks"
+  description = "RAGDrive ECS tasks"
   vpc_id      = aws_vpc.this.id
 
   egress {
@@ -93,7 +93,7 @@ resource "aws_security_group" "tasks" {
 
 resource "aws_security_group" "postgres" {
   name        = "sg-${local.prefix}-postgres"
-  description = "Ragoogle database"
+  description = "RAGDrive database"
   vpc_id      = aws_vpc.this.id
 
   ingress {
@@ -162,7 +162,7 @@ resource "aws_db_instance" "this" {
 # ── keys and secrets ────────────────────────────────────────────────────
 
 resource "aws_kms_key" "this" {
-  description         = "Ragoogle: database storage and credential envelope encryption"
+  description         = "RAGDrive: database storage and credential envelope encryption"
   enable_key_rotation = true
   # A deleted key makes every stored Drive credential permanently undecryptable,
   # so the window is the maximum rather than the 7-day default.
@@ -375,7 +375,7 @@ resource "aws_lb" "this" {
 
 resource "aws_security_group" "alb" {
   name        = "sg-${local.prefix}-alb"
-  description = "Ragoogle load balancer"
+  description = "RAGDrive load balancer"
   vpc_id      = aws_vpc.this.id
 
   ingress {

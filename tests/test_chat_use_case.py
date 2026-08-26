@@ -137,7 +137,7 @@ async def test_the_prompt_numbers_its_sources(chat):
     await collect(use_case, request())
     # FakeChatModel records the system prompt; assert the rendering separately.
     assert model.prompts
-    assert "Ragoogle" in model.prompts[0]
+    assert "RAGDrive" in model.prompts[0]
 
 
 def test_sources_are_numbered_not_titled():

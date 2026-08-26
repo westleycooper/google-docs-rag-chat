@@ -14,7 +14,7 @@ superseded_by: []
 
 ## Context
 
-Ragoogle makes two Voyage calls per question — one to embed the query, one to
+RAGDrive makes two Voyage calls per question — one to embed the query, one to
 rerank — and one per batch during ingestion. Both vendors rate-limit.
 
 The first implementation failed the whole operation on the first 429. That is

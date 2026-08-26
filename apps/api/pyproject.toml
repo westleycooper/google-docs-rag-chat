@@ -1,7 +1,7 @@
 [project]
 name = "ragoogle-api"
 version = "0.1.0"
-description = "Ragoogle FastAPI composition root and HTTP adapters"
+description = "RAGDrive FastAPI composition root and HTTP adapters"
 requires-python = ">=3.12"
 dependencies = [
     "ragoogle-core",

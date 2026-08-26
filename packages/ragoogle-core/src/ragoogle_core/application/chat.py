@@ -22,7 +22,7 @@ from ragoogle_core.retrieval.citation import Citation
 from ragoogle_core.shared.errors import InvariantViolation
 from ragoogle_core.shared.identifiers import SessionId, SourceId
 
-SYSTEM_PROMPT = """You are Ragoogle, answering questions about a document corpus.
+SYSTEM_PROMPT = """You are RAGDrive, answering questions about a document corpus.
 
 Ground every claim in the provided sources. Cite them inline as [1], [2] and so
 on, matching the numbered sources below.

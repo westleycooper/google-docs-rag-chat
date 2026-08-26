@@ -14,7 +14,7 @@ superseded_by: []
 
 ## Context
 
-Ragoogle must iterate a Google Drive, respecting permissions, and skip anything
+RAGDrive must iterate a Google Drive, respecting permissions, and skip anything
 it cannot read rather than failing the run. Two authentication models exist, and
 they differ in more than credential plumbing — they change *whose* permissions
 define the corpus:

@@ -89,7 +89,7 @@ We will keep the **server authoritative** for session context and use Redux as a
 what was proposed, and materially simpler: no hydrate endpoint, no reconciliation,
 no server-side assembly. Rejected on the three consequences above — the tampering
 surface is the decisive one, since context is prompt content and this system will
-hold corporate documents. Worth revisiting if Ragoogle is ever deployed as a
+hold corporate documents. Worth revisiting if RAGDrive is ever deployed as a
 purely local single-user tool, where all three objections weaken at once.
 
 **Server-only, no client store, re-fetch on every render.** No drift and no

@@ -14,7 +14,7 @@ superseded_by: []
 
 ## Context
 
-Retrieval in Ragoogle is not one step. A turn runs query rewriting, two parallel
+Retrieval in RAGDrive is not one step. A turn runs query rewriting, two parallel
 recall strategies, rank fusion, a cross-encoder rerank, and then generation
 (see [ADR-0004](0004-hybrid-retrieval-with-rrf-and-cross-encoder-rerank.md)), and
 some questions need more than one retrieval round before an answer is possible.

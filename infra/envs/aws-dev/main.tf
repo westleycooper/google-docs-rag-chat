@@ -1,4 +1,4 @@
-# Ragoogle on AWS, development.
+# RAGDrive on AWS, development.
 #
 # Every environment is a thin call into a per-cloud module (ADR-0005). Keeping
 # the roots this small is what makes the portability claim inspectable: if one

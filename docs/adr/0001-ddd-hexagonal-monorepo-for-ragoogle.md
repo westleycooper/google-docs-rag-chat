@@ -1,6 +1,6 @@
 ---
 id: 0001
-title: Structure Ragoogle as a DDD hexagonal monorepo
+title: Structure RAGDrive as a DDD hexagonal monorepo
 status: accepted
 date: 2026-08-25
 deciders: [Westley Cooper-Thorn]
@@ -10,11 +10,11 @@ supersedes: []
 superseded_by: []
 ---
 
-# ADR-0001: Structure Ragoogle as a DDD hexagonal monorepo
+# ADR-0001: Structure RAGDrive as a DDD hexagonal monorepo
 
 ## Context
 
-Ragoogle is a RAG chat platform that interrogates documents ingested from Google
+RAGDrive is a RAG chat platform that interrogates documents ingested from Google
 Drive, with an explicit requirement that the ingestion pipeline serve providers
 beyond Google. Several parts of the system are known to be volatile from day one:
 

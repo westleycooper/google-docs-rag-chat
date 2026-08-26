@@ -31,7 +31,7 @@ something. The obvious choice is the ingestion code that writes the row.
 **HNSW, with `vector_cosine_ops`, `m = 16`, `ef_construction = 64`.**
 
 IVFFlat's clustering is computed from the corpus at build time, which is a poor
-fit here twice over. Ragoogle's index is created by a migration against an empty
+fit here twice over. RAGDrive's index is created by a migration against an empty
 database — there is no data to cluster — and the corpus then grows continuously
 as sources are ingested, drifting away from whatever centroids were chosen. The
 resulting recall decay is silent: queries keep returning results, they are just

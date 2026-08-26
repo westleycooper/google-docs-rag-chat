@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ragoogle PostToolUse hook: validate Terraform at authoring time (ADR-0005).
+# RAGDrive PostToolUse hook: validate Terraform at authoring time (ADR-0005).
 #
 # Fires only on a change under infra/, and runs the credential-free subset --
 # fmt and validate. That catches the majority of Terraform errors when the file

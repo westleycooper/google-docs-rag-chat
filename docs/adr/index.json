@@ -23,7 +23,7 @@
     {
       "id": 1,
       "ref": "ADR-0001",
-      "title": "Structure Ragoogle as a DDD hexagonal monorepo",
+      "title": "Structure RAGDrive as a DDD hexagonal monorepo",
       "status": "accepted",
       "date": "2026-08-25",
       "component": "platform",
@@ -106,7 +106,7 @@
     {
       "id": 5,
       "ref": "ADR-0005",
-      "title": "Provision Ragoogle with Terraform across Azure, AWS and GCP",
+      "title": "Provision RAGDrive with Terraform across Azure, AWS and GCP",
       "status": "accepted",
       "date": "2026-08-25",
       "component": "infra",

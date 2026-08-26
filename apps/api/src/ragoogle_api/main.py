@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app(container: Container | None = None) -> FastAPI:
     settings = get_settings()
     app = FastAPI(
-        title="Ragoogle API",
+        title="RAGDrive API",
         version=__version__,
         description=DESCRIPTION,
         lifespan=lifespan,

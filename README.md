@@ -1,4 +1,4 @@
-# Ragoogle
+# RAGDrive
 
 RAG chat over Google Drive and other document sources, with a selectable Claude
 model, pgvector retrieval, and a live architecture view.
@@ -121,7 +121,7 @@ topic" from "answers the question".
 **The context window is visible and yours to manage.** Long RAG conversations
 fill the window, something falls out, and the assistant starts answering as
 though a document it cited three turns ago never existed. No error is raised.
-Ragoogle shows what is in the window, what it costs, and — before the next
+RAGDrive shows what is in the window, what it costs, and — before the next
 turn — exactly what would be pushed out, so you can drop something else instead.
 
 ---

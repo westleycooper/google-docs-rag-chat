@@ -18,7 +18,7 @@ from ragoogle_core.ingestion.skip import SkipRecord
 
 @dataclass(frozen=True, slots=True)
 class SourceDocument:
-    """A document as the provider describes it, before Ragoogle ingests it.
+    """A document as the provider describes it, before RAGDrive ingests it.
 
     `checksum` is what makes incremental ingestion possible: a run that can tell
     an unchanged document from a changed one re-embeds only what moved, which is

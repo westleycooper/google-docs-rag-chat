@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ragoogle Stop hook: commit completed work with a Conventional Commits message.
+# RAGDrive Stop hook: commit completed work with a Conventional Commits message.
 #
 # See docs/adr/0006-auto-commit-and-adr-as-code.md for the reasoning.
 #   - commits locally, never pushes

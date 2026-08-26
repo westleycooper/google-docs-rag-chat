@@ -1,6 +1,6 @@
 ---
 id: 0005
-title: Provision Ragoogle with Terraform across Azure, AWS and GCP
+title: Provision RAGDrive with Terraform across Azure, AWS and GCP
 status: accepted
 date: 2026-08-25
 deciders: [Westley Cooper-Thorn]
@@ -10,7 +10,7 @@ supersedes: []
 superseded_by: []
 ---
 
-# ADR-0005: Provision Ragoogle with Terraform across Azure, AWS and GCP
+# ADR-0005: Provision RAGDrive with Terraform across Azure, AWS and GCP
 
 ## Context
 

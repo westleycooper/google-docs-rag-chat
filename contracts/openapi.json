@@ -1596,7 +1596,7 @@
   },
   "info": {
     "description": "\nRAG chat over Google Drive and other document sources.\n\n**Retrieval** is hybrid: dense pgvector search and Postgres full-text search are\nfused with Reciprocal Rank Fusion, then reranked (ADR-0004). Every turn streams\nits retrieval trace so a wrong answer can be diagnosed rather than merely\nnoticed (ADR-0009).\n\n**Permissions** are respected during ingestion. A folder that cannot be read is\nskipped *with an audit record* and never fails the run, because a silent skip is\nindistinguishable from an empty folder (ADR-0003).\n",
-    "title": "Ragoogle API",
+    "title": "RAGDrive API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",

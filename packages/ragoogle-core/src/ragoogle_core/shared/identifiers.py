@@ -35,7 +35,7 @@ class SourceId(_Identifier):
 
 @dataclass(frozen=True, slots=True)
 class DocumentId(_Identifier):
-    """A document as Ragoogle knows it, distinct from its id at the source."""
+    """A document as RAGDrive knows it, distinct from its id at the source."""
 
 
 @dataclass(frozen=True, slots=True)

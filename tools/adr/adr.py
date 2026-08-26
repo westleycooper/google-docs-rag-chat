@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ragoogle ADR tool: create, list and index Architecture Decision Records.
+"""RAGDrive ADR tool: create, list and index Architecture Decision Records.
 
 Zero third-party dependencies on purpose -- this runs from a Claude Code hook
 and from CI, neither of which is guaranteed to have the app venv activated.

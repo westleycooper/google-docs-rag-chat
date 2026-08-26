@@ -177,7 +177,7 @@ resource "google_storage_bucket" "documents" {
 
 resource "google_service_account" "api" {
   account_id   = substr("sa-${local.prefix}-api", 0, 30)
-  display_name = "Ragoogle API"
+  display_name = "RAGDrive API"
 }
 
 resource "google_secret_manager_secret_iam_member" "credential_secret" {

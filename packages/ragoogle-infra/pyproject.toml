@@ -1,7 +1,7 @@
 [project]
 name = "ragoogle-infra"
 version = "0.1.0"
-description = "Ragoogle adapters. The only layer permitted to import a vendor SDK."
+description = "RAGDrive adapters. The only layer permitted to import a vendor SDK."
 requires-python = ">=3.12"
 dependencies = [
     "ragoogle-core",

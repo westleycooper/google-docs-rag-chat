@@ -92,7 +92,7 @@ export const App = () => {
           sx={{ px: 3, py: 1.5, borderBottom: 1, borderColor: 'divider' }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Ragoogle · Architecture
+            RAGDrive · Architecture
           </Typography>
           <Chip
             size="small"

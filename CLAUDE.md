@@ -1,4 +1,4 @@
-# Ragoogle
+# RAGDrive
 
 RAG chat platform over Google Drive (and other document sources), with a
 selectable Claude model, pgvector retrieval, and a live architecture

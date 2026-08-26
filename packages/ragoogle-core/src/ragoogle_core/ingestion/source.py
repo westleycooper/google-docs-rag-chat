@@ -10,7 +10,7 @@ from ragoogle_core.shared.identifiers import SourceId
 
 
 class AuthMode(StrEnum):
-    """How Ragoogle authenticates to a source (ADR-0003).
+    """How RAGDrive authenticates to a source (ADR-0003).
 
     Both are supported per source rather than per install, so one deployment can
     ingest an org's shared drive by delegation while a colleague connects their
