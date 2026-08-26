@@ -170,7 +170,10 @@ def client(request):
     asyncio.run(_seed(store, embeddings, chunks))
 
     container = Container(
-        settings=Settings(),
+        # Ping URLs disabled: pinging real container-network DNS names has no
+        # place in a hermetic unit test. The ping logic itself is covered by
+        # test_topology_ping.py against a stub transport.
+        settings=Settings(frontend_url=None, observability_url=None),
         engine=FakeEngine(healthy),  # type: ignore[arg-type]
         embeddings=embeddings,
         store=store,
@@ -243,6 +246,16 @@ def test_a_down_datastore_shows_as_down_in_the_topology(client):
     body = client.get("/topology").json()
     store_node = next(n for n in body["nodes"] if n["id"] == "vectorstore")
     assert store_node["status"] == "down"
+
+
+def test_an_unconfigured_frontend_url_is_unknown_not_a_guess(client):
+    """ADR-0006: the API pings the frontends' own servers rather than assuming
+    a status it has not actually checked."""
+    body = client.get("/topology").json()
+    for node_id in ("frontend", "observability"):
+        node = next(n for n in body["nodes"] if n["id"] == node_id)
+        assert node["status"] == "unknown"
+        assert node["latency_ms"] is None
 
 
 # -- sources --------------------------------------------------------------

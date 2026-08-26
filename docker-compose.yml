@@ -61,6 +61,10 @@ services:
       # exceeds a Voyage free-tier key's 10k tokens/minute outright.
       RAGOOGLE_CANDIDATE_LIMIT: ${RAGOOGLE_CANDIDATE_LIMIT:-50}
       RAGOOGLE_CORS_ORIGINS: http://localhost:5173,http://localhost:5174
+      # Container-network DNS names, so /topology can actually ping the other
+      # two services (ADR-0006) rather than reporting them permanently unknown.
+      RAGOOGLE_FRONTEND_URL: http://frontend
+      RAGOOGLE_OBSERVABILITY_URL: http://observability
       RAGOOGLE_LOG_LEVEL: ${RAGOOGLE_LOG_LEVEL:-INFO}
     ports:
       - "8000:8000"

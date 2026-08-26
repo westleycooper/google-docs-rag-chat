@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     otel_endpoint: str | None = None
     log_level: str = "INFO"
 
+    # ADR-0006: the topology app polls these to ping the frontends' own web
+    # servers. Defaults match the docker-compose service DNS names; unset
+    # (empty) means "don't probe" -- the node shows unknown rather than a
+    # guessed status, honest about not having checked.
+    frontend_url: str | None = "http://frontend"
+    observability_url: str | None = "http://observability"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

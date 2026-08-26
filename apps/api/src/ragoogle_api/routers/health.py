@@ -7,6 +7,7 @@ must stay cheap enough to poll on a short interval.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
+import httpx
 from fastapi import APIRouter
 from sqlalchemy import text
 
@@ -38,6 +40,12 @@ class NodeSpec:
     kind: NodeKind
     depends_on: tuple[str, ...] = ()
 
+
+#: How long a ping may take before the node is reported down. Short on purpose:
+#: the topology view polls every few seconds (ADR-0006's docstring above), and a
+#: slow frontend should read as "down", not stall the poll that is supposed to
+#: report it.
+PING_TIMEOUT_SECONDS = 2.0
 
 #: Node ids match the `component` vocabulary in tools/adr/adr.py, which is what
 #: lets a decision be rendered against the node it constrains (ADR-0006).
@@ -98,16 +106,31 @@ async def topology(container: ContainerDep) -> TopologyResponse:
     current = await health(container)
     adrs = _adrs_by_component()
 
+    async with httpx.AsyncClient() as client:
+        # Concurrently: two sequential pings would double the API's own worst
+        # case latency for a poll that is supposed to run every few seconds.
+        frontend_ping, observability_ping = await asyncio.gather(
+            _ping(client, container.settings.frontend_url),
+            _ping(client, container.settings.observability_url),
+        )
+
+    pings = {"frontend": frontend_ping, "observability": observability_ping}
+
     nodes = []
     for spec in TOPOLOGY:
         node_id = spec.id
+        latency: float | None = None
         if node_id == "vectorstore":
             state = "ok" if current.checks.get("database") == "ok" else "down"
         elif node_id in ("api", "rag-core", "ingestion"):
             state = current.status
+            if node_id == "api":
+                latency = current.latency_ms
+        elif node_id in pings:
+            state, latency = pings[node_id]
         else:
-            # The frontends and external vendors report their own state; the API
-            # cannot honestly claim to know it.
+            # No configured way to reach this one (e.g. the external vendors):
+            # unknown rather than a guessed status.
             state = "unknown"
         nodes.append(
             ComponentNode(
@@ -115,12 +138,31 @@ async def topology(container: ContainerDep) -> TopologyResponse:
                 label=spec.label,
                 kind=spec.kind,
                 status=state,  # type: ignore[arg-type]
-                latency_ms=current.latency_ms if node_id == "api" else None,
+                latency_ms=latency,
                 depends_on=list(spec.depends_on),
                 adr_refs=adrs.get(node_id, []),
             )
         )
     return TopologyResponse(nodes=nodes, generated_at=datetime.now(UTC))
+
+
+async def _ping(client: httpx.AsyncClient, url: str | None) -> tuple[str, float | None]:
+    """Check that a frontend's own web server answers.
+
+    Not a claim that a human has the page open in a browser -- only that the
+    static server behind it is reachable, which is the same standard
+    `vectorstore` is held to: is the thing there, not is someone looking at it.
+    An unconfigured URL stays `unknown` rather than guessing.
+    """
+    if not url:
+        return "unknown", None
+    started = time.perf_counter()
+    try:
+        response = await client.get(url, timeout=PING_TIMEOUT_SECONDS)
+    except httpx.HTTPError:
+        return "down", None
+    latency = round((time.perf_counter() - started) * 1000, 2)
+    return ("ok" if response.is_success else "down"), latency
 
 
 def _adrs_by_component() -> dict[str, list[str]]:

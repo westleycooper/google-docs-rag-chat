@@ -49,7 +49,9 @@ export const App = () => {
       <CssBaseline />
       <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
         <AppBar position="static" color="default" variant="outlined" elevation={0}>
-          <Toolbar variant="dense" sx={{ gap: 2 }}>
+          {/* dense is 48px; 50% taller is 72px, set explicitly rather than
+              relying on a variant whose baseline could change under us. */}
+          <Toolbar variant="dense" sx={{ gap: 2, minHeight: 72 }}>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               RAGDrive
             </Typography>
