@@ -114,10 +114,14 @@ const shapeFor = (kind: string): NodeShape => {
       ringRadius: Math.max(w, d) * 0.9,
     };
   }
-  // service
+  // service -- low segment counts on purpose: WireframeGeometry draws every
+  // triangle edge (a sphere has no sharp ones for EdgesGeometry to pick out),
+  // so a smooth 28x20 sphere here means a dense lat/long mesh. Dropping to a
+  // handful of segments gives the same low-poly, faceted read as the other
+  // primitives instead of a busy grid.
   const radius = 0.55 * NODE_SCALE;
   return {
-    geometry: new THREE.SphereGeometry(radius, 28, 20),
+    geometry: new THREE.SphereGeometry(radius, 8, 6),
     wireframe: 'full',
     halfHeight: radius,
     ringRadius: radius * 1.5,
@@ -269,20 +273,45 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     const group = new THREE.Group();
     scene.add(group);
 
+    // Computed once per node up front rather than inline in each loop below:
+    // the connector-edge loop needs every node's halfHeight to trim lines to
+    // the shape's surface, and the node loop needs the rest of it, so both
+    // read from the same map instead of building the geometry twice.
+    const shapes = new Map<string, NodeShape>();
+    for (const node of nodes) {
+      shapes.set(node.id, shapeFor(node.kind));
+    }
+
     // Fat lines need the viewport resolution in their material; every one
     // created gets tracked so a resize can update them all.
     const fatLineMaterials: LineMaterial[] = [];
     const resolution = new THREE.Vector2(width, height);
 
-    // Edges first so nodes draw over them.
+    // Edges first so nodes draw over them. Trimmed to stop at each node's
+    // surface (approximated by its halfHeight, the same "how far this shape
+    // extends from its centre" figure used to place the label) rather than
+    // running center-to-center -- untrimmed, a line ran straight through the
+    // middle of a node's wireframe cage, visible on both sides of it instead
+    // of meeting its edge.
     for (const node of nodes) {
       const from = positions.get(node.id);
-      if (!from) continue;
+      const fromShape = shapes.get(node.id);
+      if (!from || !fromShape) continue;
       for (const dependency of node.depends_on) {
         const to = positions.get(dependency);
-        if (!to) continue;
+        const toShape = shapes.get(dependency);
+        if (!to || !toShape) continue;
+
+        const direction = new THREE.Vector3().subVectors(to, from);
+        const distance = direction.length();
+        const trimmed = distance - fromShape.halfHeight - toShape.halfHeight;
+        if (trimmed <= 0) continue; // shapes touch or overlap -- nothing to draw
+        direction.normalize();
+        const start = from.clone().addScaledVector(direction, fromShape.halfHeight);
+        const end = to.clone().addScaledVector(direction, -toShape.halfHeight);
+
         const geometry = new LineGeometry();
-        geometry.setPositions([from.x, from.y, from.z, to.x, to.y, to.z]);
+        geometry.setPositions([start.x, start.y, start.z, end.x, end.y, end.z]);
         const material = new LineMaterial({
           color: CONNECTOR_COLOUR,
           linewidth: CONNECTOR_WIDTH_PX,
@@ -301,10 +330,11 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
 
     for (const node of nodes) {
       const position = positions.get(node.id);
-      if (!position) continue;
+      const shape = shapes.get(node.id);
+      if (!position || !shape) continue;
 
       const muted = !node.checkable || node.status === 'unknown';
-      const { geometry, wireframe: wireframeMode, halfHeight, ringRadius } = shapeFor(node.kind);
+      const { geometry, wireframe: wireframeMode, halfHeight, ringRadius } = shape;
 
       // An invisible solid twin carries the raycast hit-test: a bare wireframe
       // has almost no area to click, and picking one precisely would be
