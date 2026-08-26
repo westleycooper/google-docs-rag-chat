@@ -110,31 +110,36 @@ const NODE_ICONS: Record<string, IconComponent> = {
   tooling: BuildIcon,
 };
 
-/** Rasterises a real MUI icon (not a hand-drawn approximation) to a data URI.
- *
- * `renderToStaticMarkup` on an MUI icon emits Emotion's `<style>` tag ahead
- * of the `<svg>` -- two sibling root elements, which is not a well-formed SVG
- * document, so an `<img>` given that string as `src` fails to decode (and
- * silently: no `onerror` handler, no console output, the badge just never
- * gets its icon). The `<style>` block only exists to make `fill:currentColor`
- * work via the component's `color`/`htmlColor` prop, which is exactly the
- * mechanism that breaks once the stylesheet is gone -- so `fill` is set
- * directly as a presentation attribute on the root `<svg>` instead, which
- * every `<path>` here inherits without needing a stylesheet at all. */
-const iconDataUri = (Icon: IconComponent, colour: string): string => {
+/**
+ * The `d` attribute(s) of a rasterised MUI icon's path(s), drawn directly via
+ * `Path2D` rather than round-tripped through an `<img src="data:image/svg+xml...">`.
+ * The image-based version produced XML that validated as well-formed
+ * (checked with a real XML parser) but still didn't reliably decode as a
+ * standalone SVG document in a real browser -- `<img>`'s SVG decoder has
+ * requirements (namespace declarations and more) a bare well-formedness
+ * check doesn't cover, and chasing each one individually was less reliable
+ * than sidestepping the whole image-decode path. `Path2D` fed a raw `d`
+ * string is well-supported and entirely synchronous: no `Image`, no
+ * `onload`/`onerror`, no data URI, no async texture update. Cached at module
+ * scope, keyed by icon component -- the path data never changes, and two
+ * node ids share the Web icon.
+ */
+const ICON_PATH_CACHE = new Map<IconComponent, string[]>();
+const iconPaths = (Icon: IconComponent): string[] => {
+  const cached = ICON_PATH_CACHE.get(Icon);
+  if (cached) return cached;
   const markup = renderToStaticMarkup(<Icon />);
-  const svgStart = markup.indexOf('<svg');
-  const svg = svgStart >= 0 ? markup.slice(svgStart) : markup;
-  const coloured = svg.replace('<svg ', `<svg fill="${colour}" `);
-  return `data:image/svg+xml;base64,${btoa(coloured)}`;
+  const paths = [...markup.matchAll(/<path[^>]*\sd="([^"]+)"/g)].map((m) => m[1] ?? '');
+  ICON_PATH_CACHE.set(Icon, paths);
+  return paths;
 };
 
 /**
  * A node's badge: a status-tinted circle with a darker ring (dashed when the
- * node isn't checkable) and the MUI icon for its id drawn on top. The icon
- * loads asynchronously (SVG -> Image -> canvas), so the badge appears as a
- * plain tinted disc for a frame or two before the glyph fills in -- there is
- * no synchronous way to rasterise an SVG in a browser.
+ * node isn't checkable) and the MUI icon for its id drawn on top, all in one
+ * synchronous pass -- MUI icons use a 24x24 viewBox and (for every icon used
+ * here) the SVG default nonzero fill rule, so scaling into a 24-unit box and
+ * filling each path is all `Path2D` needs.
  */
 const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
   const canvas = document.createElement('canvas');
@@ -161,6 +166,19 @@ const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
     if (!node.checkable) ctx.setLineDash([BADGE_CANVAS_SIZE * 0.06, BADGE_CANVAS_SIZE * 0.045]);
     ctx.stroke();
     ctx.setLineDash([]);
+
+    const Icon = NODE_ICONS[node.id];
+    if (Icon) {
+      const iconSize = BADGE_CANVAS_SIZE * 0.46;
+      ctx.save();
+      ctx.translate(cx - iconSize / 2, cy - iconSize / 2);
+      ctx.scale(iconSize / 24, iconSize / 24);
+      ctx.fillStyle = muted ? '#EEF2F1' : '#FFFFFF';
+      for (const d of iconPaths(Icon)) {
+        ctx.fill(new Path2D(d));
+      }
+      ctx.restore();
+    }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -173,21 +191,6 @@ const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
   });
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(BADGE_WORLD_SIZE, BADGE_WORLD_SIZE, 1);
-
-  const Icon = NODE_ICONS[node.id];
-  if (Icon && ctx) {
-    const img = new Image();
-    img.onload = () => {
-      const iconSize = BADGE_CANVAS_SIZE * 0.46;
-      ctx.drawImage(img, cx - iconSize / 2, cy - iconSize / 2, iconSize, iconSize);
-      texture.needsUpdate = true;
-    };
-    // A plain tinted disc is a legible enough fallback that this should never
-    // be silent again the way the unhandled failure before this fix was.
-    img.onerror = () => console.warn(`topology: icon failed to rasterise for node ${node.id}`);
-    img.src = iconDataUri(Icon, muted ? '#EEF2F1' : '#FFFFFF');
-  }
-
   return sprite;
 };
 
