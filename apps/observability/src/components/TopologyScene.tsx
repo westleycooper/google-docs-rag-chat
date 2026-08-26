@@ -31,7 +31,7 @@ import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import BuildIcon from '@mui/icons-material/Build';
 import CloudIcon from '@mui/icons-material/Cloud';
 import DnsIcon from '@mui/icons-material/Dns';
-import ExploreIcon from '@mui/icons-material/Explore';
+import SortIcon from '@mui/icons-material/Sort';
 import HubIcon from '@mui/icons-material/Hub';
 import InputIcon from '@mui/icons-material/Input';
 import PsychologyIcon from '@mui/icons-material/Psychology';
@@ -105,9 +105,28 @@ const NODE_ICONS: Record<string, IconComponent> = {
   ingestion: InputIcon,
   vectorstore: StorageIcon,
   anthropic: PsychologyIcon,
-  voyage: ExploreIcon,
+  voyage: SortIcon, // Voyage's actual jobs -- embedding and reranking -- are an
+  // ordering problem, not a wayfinding one; a compass read as "explore/search"
+  // when what it does is score and sort candidates.
   infra: CloudIcon,
   tooling: BuildIcon,
+};
+
+/** What each node actually does, not just what it's called -- shown as a
+ * second, smaller line under the label. Grounded in this project's own ADRs
+ * rather than generic category names, so it stays specific to this system:
+ * "Retrieval | RRF" for rag-core, not "Backend Service". */
+const NODE_SUBLABELS: Record<string, string> = {
+  frontend: 'Chat | Context Meter',
+  observability: 'Live Topology | ADRs',
+  api: 'REST | SSE',
+  'rag-core': 'Retrieval | RRF',
+  ingestion: 'Drive Sync | Chunking',
+  vectorstore: 'Vectors | Full-text',
+  anthropic: 'Chat | Eval Judge',
+  voyage: 'Embeddings | Reranking',
+  infra: 'Terraform | Multi-cloud',
+  tooling: 'Quality Gates | ADRs',
 };
 
 /**
@@ -194,28 +213,55 @@ const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
   return sprite;
 };
 
+// Reference used to convert a label canvas's pixel height into a world-space
+// sprite height: a single-line label at SCALE was tuned to read well at
+// SINGLE_LINE_WORLD_HEIGHT, so every label (one line or two) holds that same
+// pixel-to-world ratio rather than a fixed world height squashing a taller,
+// two-line canvas down to the same size as a one-line one.
+const LABEL_CANVAS_SCALE = 2;
+const SINGLE_LINE_HEIGHT_PX = 44 * LABEL_CANVAS_SCALE;
+const SINGLE_LINE_WORLD_HEIGHT = 0.26;
+const PX_PER_WORLD_UNIT = SINGLE_LINE_HEIGHT_PX / SINGLE_LINE_WORLD_HEIGHT;
+
 /**
- * A node label as a sprite.
+ * A node label as a sprite, with an optional smaller second line underneath
+ * it naming what the node actually does (e.g. "Embeddings | Reranking")
+ * rather than just what it's called.
  *
  * Canvas-texture sprites rather than a text geometry: they always face the
  * camera, need no font loading, and stay crisp because the texture is drawn at
  * device resolution. An unlabelled architecture graph is decorative -- you
  * cannot tell which badge just went red.
  */
-const makeLabel = (text: string, colour: string): THREE.Sprite => {
-  const scale = 2;
-  const font = `600 ${28 * scale}px Inter, -apple-system, sans-serif`;
+const makeLabel = (text: string, colour: string, subtext?: string): THREE.Sprite => {
+  const scale = LABEL_CANVAS_SCALE;
+  const font = `600 ${26 * scale}px Inter, -apple-system, sans-serif`;
+  const subFont = `500 ${18 * scale}px Inter, -apple-system, sans-serif`;
+
   const measure = document.createElement('canvas').getContext('2d');
-  if (measure) measure.font = font;
-  const width = Math.ceil((measure?.measureText(text).width ?? text.length * 16) + 24 * scale);
-  const height = 44 * scale;
+  let textWidth = text.length * 16;
+  let subtextWidth = 0;
+  if (measure) {
+    measure.font = font;
+    textWidth = measure.measureText(text).width;
+    if (subtext) {
+      measure.font = subFont;
+      subtextWidth = measure.measureText(subtext).width;
+    }
+  }
+  const width = Math.ceil(Math.max(textWidth, subtextWidth) + 24 * scale);
+  const mainLineHeight = 34 * scale;
+  const subLineHeight = subtext ? 26 * scale : 0;
+  const verticalPadding = subtext ? 12 * scale : 0;
+  const height = subtext
+    ? mainLineHeight + subLineHeight + verticalPadding
+    : SINGLE_LINE_HEIGHT_PX;
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.font = font;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     // A rounded plate behind the text so a label crossing an edge line stays
@@ -228,8 +274,19 @@ const makeLabel = (text: string, colour: string): THREE.Sprite => {
     ctx.beginPath();
     ctx.roundRect(0, 0, width, height, 10 * scale);
     ctx.fill();
+
+    ctx.font = font;
     ctx.fillStyle = colour;
-    ctx.fillText(text, width / 2, height / 2 + 2);
+    ctx.fillText(text, width / 2, subtext ? mainLineHeight / 2 + 4 * scale : height / 2 + 2);
+
+    if (subtext) {
+      ctx.font = subFont;
+      // A fixed, dimmer tone regardless of the main line's colour -- the
+      // sub-label is supporting detail, not a second thing demanding equal
+      // attention.
+      ctx.fillStyle = '#A9B7B4';
+      ctx.fillText(subtext, width / 2, mainLineHeight + subLineHeight / 2 + 2 * scale);
+    }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -237,9 +294,12 @@ const makeLabel = (text: string, colour: string): THREE.Sprite => {
   const sprite = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }),
   );
-  // Sized in world units so a label stays proportional to its node rather
-  // than to the canvas resolution.
-  const worldHeight = 0.26;
+  // Anchored at top-centre rather than the sprite default (dead centre): the
+  // label's position is set just below a badge, and a two-line label should
+  // grow downward from that fixed point rather than needing its own
+  // per-length vertical offset to keep its top edge clear of the badge.
+  sprite.center.set(0.5, 1);
+  const worldHeight = height / PX_PER_WORLD_UNIT;
   sprite.scale.set((width / height) * worldHeight, worldHeight, 1);
   return sprite;
 };
@@ -462,7 +522,10 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       group.add(boxOutline);
 
       const dockerLabel = makeLabel('Docker', '#4FC3F7');
-      dockerLabel.position.set(center.x - boxWidth / 2 + 0.55, center.y + boxHeight / 2 + 0.22, center.z);
+      // makeLabel's sprite is top-anchored, so this point is the label's top
+      // edge, not its centre -- a little higher than the old centre-anchored
+      // offset to land in roughly the same visual spot above the box.
+      dockerLabel.position.set(center.x - boxWidth / 2 + 0.55, center.y + boxHeight / 2 + 0.35, center.z);
       group.add(dockerLabel);
     }
 
@@ -486,8 +549,11 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
         pulsing.push({ material: badge.material, rate, base: 0.65 });
       }
 
-      const label = makeLabel(node.label, muted ? '#A8B0AE' : '#FFFFFF');
-      label.position.set(position.x, position.y - BADGE_RADIUS - 0.27, position.z);
+      const label = makeLabel(node.label, muted ? '#A8B0AE' : '#FFFFFF', NODE_SUBLABELS[node.id]);
+      // Top-anchored (see makeLabel), so this is the gap below the badge, not
+      // a center offset -- a two-line label grows downward from here rather
+      // than needing a taller offset of its own.
+      label.position.set(position.x, position.y - BADGE_RADIUS - 0.14, position.z);
       group.add(label);
 
       if (node.id === selectedId) {
