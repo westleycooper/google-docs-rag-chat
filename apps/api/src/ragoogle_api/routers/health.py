@@ -66,7 +66,7 @@ TOPOLOGY: tuple[NodeSpec, ...] = (
     NodeSpec("ingestion", "Ingestion", "service", ("vectorstore",)),
     NodeSpec("vectorstore", "Postgres + pgvector", "datastore"),
     NodeSpec("anthropic", "Claude", "external"),
-    NodeSpec("voyage", "Voyage", "external"),
+    NodeSpec("voyage", "Voyage AI", "external"),
     NodeSpec("infra", "Infrastructure", "service", checkable=False),
     NodeSpec("tooling", "Tooling", "service", checkable=False),
 )

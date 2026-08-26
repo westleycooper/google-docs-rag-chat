@@ -61,17 +61,22 @@ const STATUS_PULSE: Record<NodeStatus, number> = {
   unknown: 0,
 };
 
-const TIER_Y: Record<string, number> = {
+/** Row names are historical (they used to be `kind` tiers, back when a node's
+ * row was derived straight from its kind); `kind` is now only the semantic
+ * label shown in the detail panel, and a node's row/column is looked up from
+ * NODE_LAYOUT below instead, so the two can diverge -- e.g. Postgres sits in
+ * the "service" row while still reading as "datastore" in the panel. */
+const ROW_Y: Record<string, number> = {
   frontend: 2.7,
   service: 0.6,
   datastore: -1.5,
   external: -3.4,
-  // Non-checkable nodes (infra, tooling) get their own row below everything
-  // else, rather than sharing the "service" row. They used to sit at the
-  // same y as api/rag-core/ingestion, which put them well within the Docker
-  // box's vertical span -- the box is an axis-aligned rectangle around
+  // Infra and tooling get their own row below everything else, rather than
+  // sharing the "service" row. They used to sit at the same y as
+  // api/rag-core/ingestion, which put them well within the Docker box's
+  // vertical span -- the box is an axis-aligned rectangle around
   // frontend/observability/api/vectorstore, and frontend and observability
-  // are the only two members of their tier, so they sit at the far left and
+  // are the only two members of their row, so they sit at the far left and
   // far right edges of the whole diagram; a box reaching both of them
   // necessarily spans the full width of every row it crosses, catching
   // whatever else happens to be in that row along the way. Moving these two
@@ -140,6 +145,31 @@ const NODE_SUBLABELS: Record<string, string> = {
   infra: 'Terraform | Multi-cloud',
   tooling: 'Quality Gates | ADRs',
 };
+
+/** Left/centre/right x for a fixed three-column grid -- the same span the old
+ * three-member rows used, but now every row shares it instead of each row
+ * spreading its own members evenly, so a node's column is a stable identity
+ * rather than an accident of how many siblings happen to share its row. */
+const COLUMN_X = [-4.2, 0, 4.2] as const;
+
+/** Where each node sits, chosen by hand rather than derived from `kind`
+ * (which stays the semantic label in the detail panel -- see ROW_Y above).
+ * A node id with no entry here falls back to the reference row's centre
+ * column, which is visible enough to prompt whoever added the id to give it
+ * a real spot instead of silently vanishing. */
+const NODE_LAYOUT: Record<string, { row: keyof typeof ROW_Y; column: 0 | 1 | 2 }> = {
+  frontend: { row: 'frontend', column: 0 },
+  observability: { row: 'frontend', column: 1 },
+  ingestion: { row: 'service', column: 0 },
+  api: { row: 'service', column: 1 },
+  vectorstore: { row: 'service', column: 2 },
+  'rag-core': { row: 'datastore', column: 1 },
+  anthropic: { row: 'external', column: 0 },
+  voyage: { row: 'external', column: 1 },
+  infra: { row: 'reference', column: 0 },
+  tooling: { row: 'reference', column: 2 },
+};
+const DEFAULT_LAYOUT = { row: 'reference', column: 1 } as const;
 
 /**
  * The `d` attribute(s) of a rasterised MUI icon's path(s), drawn directly via
@@ -428,23 +458,10 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
     });
     controls.update();
 
-    // Lay each tier out evenly across the x axis. Non-checkable nodes route
-    // to their own "reference" row (see TIER_Y) regardless of kind.
-    const byTier = new Map<string, ComponentNode[]>();
-    for (const node of nodes) {
-      const tier = node.checkable ? node.kind : 'reference';
-      byTier.set(tier, [...(byTier.get(tier) ?? []), node]);
-    }
-
     const positions = new Map<string, THREE.Vector3>();
-    for (const [tier, members] of byTier) {
-      const y = TIER_Y[tier] ?? 0;
-      const z = 0;
-      const span = Math.max(members.length - 1, 1);
-      members.forEach((node, i) => {
-        const x = members.length === 1 ? 0 : (i / span - 0.5) * 8.4;
-        positions.set(node.id, new THREE.Vector3(x, y, z));
-      });
+    for (const node of nodes) {
+      const layout = NODE_LAYOUT[node.id] ?? DEFAULT_LAYOUT;
+      positions.set(node.id, new THREE.Vector3(COLUMN_X[layout.column], ROW_Y[layout.row] ?? 0, 0));
     }
 
     const group = new THREE.Group();
