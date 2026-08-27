@@ -41,16 +41,16 @@ import type { ComponentType } from 'react';
 import type { SvgIconProps } from '@mui/material';
 import type { ComponentNode, NodeStatus } from '@/api/topology';
 
-// Matches App.tsx's MUI theme and the chat app's default preset, Console
-// (Light) (apps/frontend/src/theme.ts CONSOLE_LIGHT.statusColours) -- kept in
-// hex here for the same reason App.tsx duplicates its palette instead of
-// importing it (see the comment there): the WebGL canvas is a separate
-// rendering context the MUI theme object cannot reach into anyway.
+// Matches App.tsx's MUI theme and the chat app's dark preset, Console (Dark)
+// (apps/frontend/src/theme.ts CONSOLE_DARK.statusColours) -- kept in hex here
+// for the same reason App.tsx duplicates its palette instead of importing it
+// (see the comment there): the WebGL canvas is a separate rendering context
+// the MUI theme object cannot reach into anyway.
 const STATUS_COLOURS: Record<NodeStatus, string> = {
-  ok: '#3F7D52',
-  degraded: '#B8860B',
-  down: '#B4322F',
-  unknown: '#7A8790',
+  ok: '#6FBF86',
+  degraded: '#D9A441',
+  down: '#E0685F',
+  unknown: '#8A97A0',
 };
 
 /** Pulses per second. Healthy is still; trouble draws the eye. */
@@ -71,21 +71,26 @@ const ROW_Y: Record<string, number> = {
   service: 0.6,
   datastore: -1.5,
   external: -3.4,
-  // Infra and tooling get their own row below everything else, rather than
-  // sharing the "service" row. They used to sit at the same y as
-  // api/rag-core/ingestion, which put them well within the Docker box's
-  // vertical span -- the box is an axis-aligned rectangle around
-  // frontend/observability/api/vectorstore, and frontend and observability
-  // are the only two members of their row, so they sit at the far left and
-  // far right edges of the whole diagram; a box reaching both of them
-  // necessarily spans the full width of every row it crosses, catching
-  // whatever else happens to be in that row along the way. Moving these two
-  // below the box's y-range entirely sidesteps that rather than trying to
-  // carve a non-rectangular hole for them.
+  // Infra and tooling each get their own row, stacked in the first column
+  // just below "external" rather than sharing the "service" row. They used
+  // to sit at the same y as api/rag-core/ingestion, which put them well
+  // within the Docker box's vertical span -- the box is an axis-aligned
+  // rectangle around frontend/observability/api/vectorstore, and frontend
+  // and observability are the only two members of their row, so they sit at
+  // the far left and far right edges of the whole diagram; a box reaching
+  // both of them necessarily spans the full width of every row it crosses,
+  // catching whatever else happens to be in that row along the way. Both
+  // rows here still sit below the box's y-range (see the box's own comment
+  // below), which sidesteps that rather than trying to carve a
+  // non-rectangular hole for them.
+  infra: -3.5,
+  tooling: -5,
+  // Fallback row for a node id with no entry in NODE_LAYOUT -- see
+  // DEFAULT_LAYOUT below.
   reference: -5.4,
 };
 
-const CONNECTOR_COLOUR = 0x4f7c78; // CONSOLE_LIGHT.secondary -- dark enough to read against a light background
+const CONNECTOR_COLOUR = 0x7c93a0; // CONSOLE_DARK.secondary -- light enough to read against a dark background
 const CONNECTOR_WIDTH_PX = 2.5;
 
 // Explicitly requested: thicker than a standard outline, and a colour no
@@ -164,10 +169,10 @@ const NODE_LAYOUT: Record<string, { row: keyof typeof ROW_Y; column: 0 | 1 | 2 }
   api: { row: 'service', column: 1 },
   vectorstore: { row: 'service', column: 2 },
   'rag-core': { row: 'datastore', column: 1 },
-  anthropic: { row: 'external', column: 0 },
   voyage: { row: 'external', column: 1 },
-  infra: { row: 'reference', column: 0 },
-  tooling: { row: 'reference', column: 2 },
+  anthropic: { row: 'external', column: 2 },
+  infra: { row: 'infra', column: 0 },
+  tooling: { row: 'tooling', column: 0 },
 };
 const DEFAULT_LAYOUT = { row: 'reference', column: 1 } as const;
 
@@ -372,20 +377,21 @@ const makeSelectionRing = (): THREE.Sprite => {
   return sprite;
 };
 
-/** A soft light radial backdrop for the scene, rather than a flat fill --
+/** A soft dark radial backdrop for the scene, rather than a flat fill --
  * requested explicitly ("it needs to look good"), and kept subtle: a few
  * percent of tint from centre to edge, not the kind of gradient ADR-0017
  * ruled out for the page chrome. That decision was about the MUI theme's
  * flat, no-texture surfaces; a soft depth cue behind a 3D scene is a
- * different thing living in a different layer. */
+ * different thing living in a different layer. Centre/edge match
+ * CONSOLE_DARK's paper/default (apps/frontend/src/theme.ts). */
 const makeBackground = (): { texture: THREE.CanvasTexture; edgeColour: number } => {
   const size = 512;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
-  const centre = '#fcfcfb';
-  const edge = '#e7ecec';
+  const centre = '#1A2224';
+  const edge = '#12181A';
   if (ctx) {
     const gradient = ctx.createRadialGradient(
       size / 2,
@@ -401,7 +407,7 @@ const makeBackground = (): { texture: THREE.CanvasTexture; edgeColour: number } 
     ctx.fillRect(0, 0, size, size);
   }
   const texture = new THREE.CanvasTexture(canvas);
-  return { texture, edgeColour: 0xe7ecec };
+  return { texture, edgeColour: 0x12181a };
 };
 
 interface Props {
@@ -506,7 +512,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       }
     }
 
-    // A dashed frame around the nodes that are actually docker-compose
+    // A solid frame around the nodes that are actually docker-compose
     // containers (frontend, observability, api, vectorstore) -- rag-core and
     // ingestion live inside the api process rather than as containers of
     // their own, and the vendors/infra/tooling aren't containers at all, so
@@ -539,16 +545,13 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       const boxEdges = new THREE.EdgesGeometry(boxGeometry);
       const boxOutline = new THREE.LineSegments(
         boxEdges,
-        new THREE.LineDashedMaterial({
+        new THREE.LineBasicMaterial({
           color: DOCKER_BLUE,
           transparent: true,
           opacity: 0.55,
-          dashSize: 0.12,
-          gapSize: 0.09,
         }),
       );
       boxOutline.position.copy(center);
-      boxOutline.computeLineDistances();
       group.add(boxOutline);
 
       const dockerLabel = makeLabel('Docker', '#4FC3F7');

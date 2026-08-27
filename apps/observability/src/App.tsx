@@ -29,27 +29,27 @@ import {
 import { TopologyScene } from '@/components/TopologyScene';
 import { fetchTopology, type ComponentNode, type NodeStatus, type Topology } from '@/api/topology';
 
-// The chat app's default preset -- Console (Light) (see
+// The chat app's dark preset -- Console (Dark) (see
 // apps/frontend/src/theme.ts) -- duplicated by hex value rather than
 // imported: the two apps are independent packages with no shared
 // design-tokens package between them, and one flat file of colour constants
 // is not worth introducing a workspace dependency for. Unlike the chat app,
 // this page has no picker: it is a single-purpose live dashboard, not a
 // surface where "make a choice" belongs, so it always renders in the
-// product's default look -- which means this block goes stale every time
-// that default changes and has to be updated by hand; there is no test that
+// product's dark look -- which means this block goes stale every time
+// that preset changes and has to be updated by hand; there is no test that
 // would catch the two drifting apart.
 const theme = createTheme({
   palette: {
-    mode: 'light',
-    background: { default: '#F7F7F5', paper: '#FFFFFF' },
-    primary: { main: '#1C2B33' },
-    secondary: { main: '#4F7C78' },
-    error: { main: '#B4322F' },
-    warning: { main: '#B8860B' },
-    success: { main: '#3F7D52' },
-    info: { main: '#3E6B99' },
-    text: { primary: '#1F2D36', secondary: '#5C6A72' },
+    mode: 'dark',
+    background: { default: '#12181A', paper: '#1A2224' },
+    primary: { main: '#5FA39D' },
+    secondary: { main: '#7C93A0' },
+    error: { main: '#E0685F' },
+    warning: { main: '#D9A441' },
+    success: { main: '#6FBF86' },
+    info: { main: '#6FA8D9' },
+    text: { primary: '#EDF2F1', secondary: '#9FB0B3' },
   },
   shape: { borderRadius: 10 },
   typography: {

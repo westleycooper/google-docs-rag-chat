@@ -60,7 +60,7 @@ PING_TIMEOUT_SECONDS = 2.0
 #: with an unrelated component of the same name.
 TOPOLOGY: tuple[NodeSpec, ...] = (
     NodeSpec("frontend", "Chat UI", "frontend", ("api",)),
-    NodeSpec("observability", "Observability", "frontend", ("api",)),
+    NodeSpec("observability", "Observability UI", "frontend", ("api",)),
     NodeSpec("api", "API", "service", ("rag-core", "vectorstore")),
     NodeSpec("rag-core", "RAG Core", "service", ("vectorstore", "anthropic", "voyage")),
     NodeSpec("ingestion", "Ingestion", "service", ("vectorstore",)),
