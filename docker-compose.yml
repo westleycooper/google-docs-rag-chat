@@ -66,6 +66,13 @@ services:
       RAGOOGLE_FRONTEND_URL: http://frontend
       RAGOOGLE_OBSERVABILITY_URL: http://observability
       RAGOOGLE_LOG_LEVEL: ${RAGOOGLE_LOG_LEVEL:-INFO}
+      # ADR-0016. Required only to offer "Connect Google Drive"; unset leaves
+      # the OAuth start endpoint returning a clear 503 instead of a broken
+      # redirect (see google_oauth_client_id in settings.py).
+      RAGOOGLE_GOOGLE_OAUTH_CLIENT_ID: ${RAGOOGLE_GOOGLE_OAUTH_CLIENT_ID:-}
+      RAGOOGLE_GOOGLE_OAUTH_CLIENT_SECRET: ${RAGOOGLE_GOOGLE_OAUTH_CLIENT_SECRET:-}
+      RAGOOGLE_GOOGLE_OAUTH_REDIRECT_URI: ${RAGOOGLE_GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:8000/oauth/google/callback}
+      RAGOOGLE_FRONTEND_PUBLIC_URL: ${RAGOOGLE_FRONTEND_PUBLIC_URL:-http://localhost:5173}
     ports:
       - "8000:8000"
     depends_on:
