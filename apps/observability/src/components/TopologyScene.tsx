@@ -72,19 +72,15 @@ const ROW_Y: Record<string, number> = {
   datastore: -1.5,
   external: -3.4,
   // Infra and tooling each get their own row, stacked in the first column
-  // just below "external" rather than sharing the "service" row. They used
-  // to sit at the same y as api/rag-core/ingestion, which put them well
-  // within the Docker box's vertical span -- the box is an axis-aligned
-  // rectangle around frontend/observability/api/vectorstore, and frontend
-  // and observability are the only two members of their row, so they sit at
-  // the far left and far right edges of the whole diagram; a box reaching
-  // both of them necessarily spans the full width of every row it crosses,
-  // catching whatever else happens to be in that row along the way. Both
-  // rows here still sit below the box's y-range (see the box's own comment
-  // below), which sidesteps that rather than trying to carve a
-  // non-rectangular hole for them.
-  infra: -3.5,
-  tooling: -5,
+  // rather than sharing the "service" row. The Docker box is an
+  // axis-aligned rectangle, and frontend/observability/vectorstore sit at
+  // its far left/right edges, so a box tall enough to reach down to
+  // rag-core (datastore row, y -1.5) necessarily spans the full width of
+  // every row down to about y -2.1 (see the box's own padY) -- these two
+  // rows sit just below that, close enough to read as "right under
+  // external" without entering the box.
+  infra: -2.7,
+  tooling: -4.2,
   // Fallback row for a node id with no entry in NODE_LAYOUT -- see
   // DEFAULT_LAYOUT below.
   reference: -5.4,
@@ -99,12 +95,17 @@ const SELECTION_COLOUR = '#CC5500';
 const SELECTION_STROKE_FRACTION = 0.09;
 
 const DOCKER_BLUE = 0x2496ed; // Docker's own brand colour
-/** The topology nodes that correspond to an actual container in
- * docker-compose.yml, as opposed to a logical concept living inside one
- * (rag-core/ingestion are code paths inside the api process, not services of
- * their own) or something that isn't a container at all (the vendors,
- * infra, tooling). */
-const DOCKERISED_NODE_IDS = ['frontend', 'observability', 'api', 'vectorstore'];
+/** The topology nodes the Docker box is drawn around: the four that
+ * correspond to an actual container in docker-compose.yml (frontend,
+ * observability, api, vectorstore), plus rag-core -- a code path inside the
+ * api process rather than a container of its own, but one that still runs
+ * inside the api container and so should read as "inside Docker" rather
+ * than sitting outside the box. ingestion is the same kind of code path but
+ * needs no entry here: it already shares api's row and first column, so it
+ * falls inside the box's bounds without being named explicitly. The vendors
+ * and infra/tooling aren't containers or code paths inside one at all, so
+ * they stay out. */
+const DOCKERISED_NODE_IDS = ['frontend', 'observability', 'api', 'vectorstore', 'rag-core'];
 
 /** Every node is the same size now that an icon, not a shape, carries the
  * "what is this" signal -- varying size per kind would just be noise. */
@@ -207,7 +208,7 @@ const iconPaths = (Icon: IconComponent): string[] => {
  * here) the SVG default nonzero fill rule, so scaling into a 24-unit box and
  * filling each path is all `Path2D` needs.
  */
-const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
+const makeBadge = (node: ComponentNode): THREE.Sprite => {
   const canvas = document.createElement('canvas');
   canvas.width = BADGE_CANVAS_SIZE;
   canvas.height = BADGE_CANVAS_SIZE;
@@ -239,7 +240,7 @@ const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
       ctx.save();
       ctx.translate(cx - iconSize / 2, cy - iconSize / 2);
       ctx.scale(iconSize / 24, iconSize / 24);
-      ctx.fillStyle = muted ? '#EEF2F1' : '#FFFFFF';
+      ctx.fillStyle = '#FFFFFF';
       for (const d of iconPaths(Icon)) {
         ctx.fill(new Path2D(d));
       }
@@ -249,6 +250,7 @@ const makeBadge = (node: ComponentNode, muted: boolean): THREE.Sprite => {
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
   const material = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,
@@ -338,6 +340,7 @@ const makeLabel = (text: string, colour: string, subtext?: string): THREE.Sprite
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }),
   );
@@ -370,6 +373,7 @@ const makeSelectionRing = (): THREE.Sprite => {
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
+  texture.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(
     new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }),
   );
@@ -377,36 +381,23 @@ const makeSelectionRing = (): THREE.Sprite => {
   return sprite;
 };
 
-/** A soft dark radial backdrop for the scene, rather than a flat fill --
- * requested explicitly ("it needs to look good"), and kept subtle: a few
- * percent of tint from centre to edge, not the kind of gradient ADR-0017
- * ruled out for the page chrome. That decision was about the MUI theme's
- * flat, no-texture surfaces; a soft depth cue behind a 3D scene is a
- * different thing living in a different layer. Centre/edge match
- * CONSOLE_DARK's paper/default (apps/frontend/src/theme.ts). */
+/** A flat backdrop for the scene, in the darkest surface CONSOLE_DARK
+ * defines (apps/frontend/src/theme.ts's `background.default`) -- requested
+ * explicitly, in place of the subtle paper-to-default radial tint this used
+ * to carry. */
 const makeBackground = (): { texture: THREE.CanvasTexture; edgeColour: number } => {
   const size = 512;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
-  const centre = '#1A2224';
-  const edge = '#12181A';
+  const colour = '#12181A';
   if (ctx) {
-    const gradient = ctx.createRadialGradient(
-      size / 2,
-      size * 0.4,
-      0,
-      size / 2,
-      size / 2,
-      size * 0.75,
-    );
-    gradient.addColorStop(0, centre);
-    gradient.addColorStop(1, edge);
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = colour;
     ctx.fillRect(0, 0, size, size);
   }
   const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
   return { texture, edgeColour: 0x12181a };
 };
 
@@ -512,12 +503,10 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
       }
     }
 
-    // A solid frame around the nodes that are actually docker-compose
-    // containers (frontend, observability, api, vectorstore) -- rag-core and
-    // ingestion live inside the api process rather than as containers of
-    // their own, and the vendors/infra/tooling aren't containers at all, so
-    // the box is built from those four positions specifically rather than a
-    // whole tier.
+    // A solid frame around the nodes docker-compose actually runs, plus
+    // rag-core, which runs inside the api container even though it isn't a
+    // container of its own -- see DOCKERISED_NODE_IDS. Built from those
+    // specific positions rather than a whole tier.
     const dockerPositions = DOCKERISED_NODE_IDS.map((id) => positions.get(id)).filter(
       (p): p is THREE.Vector3 => p !== undefined,
     );
@@ -571,7 +560,7 @@ export const TopologyScene = ({ nodes, onSelect, selectedId }: Props) => {
 
       const muted = !node.checkable || node.status === 'unknown';
 
-      const badge = makeBadge(node, muted);
+      const badge = makeBadge(node);
       badge.position.copy(position);
       badge.userData = { nodeId: node.id };
       group.add(badge);
