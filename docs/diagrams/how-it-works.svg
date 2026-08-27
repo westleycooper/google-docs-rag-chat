@@ -1,0 +1,92 @@
+<svg width="1380" height="580" viewBox="0 0 1380 580" xmlns="http://www.w3.org/2000/svg" font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7C93A0" />
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1380" height="580" rx="16" fill="#12181A" />
+  <rect x="0.5" y="0.5" width="1379" height="579" rx="15.5" fill="none" stroke="#26313480" stroke-width="1" />
+
+  <!-- section labels -->
+  <text x="40" y="38" fill="#6C7A7E" font-size="13" font-weight="600" letter-spacing="1.5">INGESTION</text>
+  <text x="40" y="328" fill="#6C7A7E" font-size="13" font-weight="600" letter-spacing="1.5">RETRIEVAL</text>
+
+  <!-- ── row 1: ingestion ─────────────────────────────────────────── -->
+
+  <!-- arrows first, so nodes draw over their ends -->
+  <line x1="200" y1="86" x2="296" y2="86" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="440" y1="86" x2="766" y2="86" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="605" y="72" fill="#9FB0B3" font-size="13" text-anchor="middle">chunks + vectors</text>
+
+  <line x1="370" y1="112" x2="370" y2="196" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="460" y1="226" x2="766" y2="226" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="880" y1="112" x2="880" y2="196" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- nodes -->
+  <g>
+    <rect x="40" y="60" width="160" height="52" rx="10" fill="#1A2224" stroke="#2E3A3D" />
+    <text x="120" y="91" fill="#EDF2F1" font-size="15" font-weight="600" text-anchor="middle">Google Drive</text>
+  </g>
+  <g>
+    <rect x="300" y="60" width="140" height="52" rx="10" fill="#1A2224" stroke="#2E3A3D" />
+    <text x="370" y="91" fill="#EDF2F1" font-size="15" font-weight="600" text-anchor="middle">Ingestion</text>
+  </g>
+  <g>
+    <rect x="770" y="60" width="220" height="52" rx="10" fill="#1A2224" stroke="#2E3A3D" />
+    <text x="880" y="91" fill="#EDF2F1" font-size="15" font-weight="600" text-anchor="middle">Postgres / pgvector</text>
+  </g>
+  <g>
+    <rect x="280" y="200" width="180" height="52" rx="10" fill="#1A2224" stroke="#3D3222" />
+    <text x="370" y="231" fill="#E8CFA0" font-size="15" font-weight="600" text-anchor="middle">Skips (audited)</text>
+  </g>
+  <g>
+    <rect x="770" y="200" width="220" height="52" rx="10" fill="#1A2224" stroke="#2E3A3D" />
+    <text x="880" y="231" fill="#EDF2F1" font-size="15" font-weight="600" text-anchor="middle">Configuration UI</text>
+  </g>
+
+  <!-- ── row 2: retrieval ─────────────────────────────────────────── -->
+
+  <line x1="180" y1="398" x2="292" y2="372" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="180" y1="414" x2="292" y2="440" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="480" y1="372" x2="596" y2="398" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="480" y1="440" x2="596" y2="414" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="690" y1="406" x2="756" y2="406" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="870" y1="406" x2="936" y2="406" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="1050" y1="406" x2="1116" y2="406" stroke="#7C93A0" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- trace, dashed -->
+  <path d="M390,472 L390,520 L1230,520 L1230,436" fill="none" stroke="#5B7A80" stroke-width="2"
+        stroke-dasharray="6 5" marker-end="url(#arrow)" />
+  <text x="810" y="537" fill="#7C8A8D" font-size="13" text-anchor="middle" letter-spacing="0.5">trace</text>
+
+  <!-- nodes -->
+  <g>
+    <rect x="40" y="380" width="140" height="52" rx="10" fill="#1A2224" stroke="#2E3A3D" />
+    <text x="110" y="411" fill="#EDF2F1" font-size="15" font-weight="600" text-anchor="middle">Question</text>
+  </g>
+  <g>
+    <rect x="300" y="340" width="180" height="52" rx="10" fill="#1A2224" stroke="#2E3A3D" />
+    <text x="390" y="371" fill="#EDF2F1" font-size="15" font-weight="600" text-anchor="middle">Dense search</text>
+  </g>
+  <g>
+    <rect x="300" y="420" width="180" height="52" rx="10" fill="#1A2224" stroke="#2E3A3D" />
+    <text x="390" y="451" fill="#EDF2F1" font-size="15" font-weight="600" text-anchor="middle">Lexical search</text>
+  </g>
+  <g>
+    <rect x="600" y="380" width="90" height="52" rx="10" fill="#1A2224" stroke="#2E3A3D" />
+    <text x="645" y="411" fill="#EDF2F1" font-size="15" font-weight="600" text-anchor="middle">RRF</text>
+  </g>
+  <g>
+    <rect x="760" y="380" width="110" height="52" rx="10" fill="#1A2224" stroke="#2E3A3D" />
+    <text x="815" y="411" fill="#EDF2F1" font-size="15" font-weight="600" text-anchor="middle">Rerank</text>
+  </g>
+  <g>
+    <rect x="940" y="380" width="110" height="52" rx="10" fill="#1A2224" stroke="#3A2E22" />
+    <text x="995" y="411" fill="#E0B98C" font-size="15" font-weight="600" text-anchor="middle">Claude</text>
+  </g>
+  <g>
+    <rect x="1120" y="380" width="220" height="52" rx="10" fill="#16302C" stroke="#2F5148" />
+    <text x="1230" y="411" fill="#8FE0BE" font-size="15" font-weight="600" text-anchor="middle">Answer + citations</text>
+  </g>
+</svg>

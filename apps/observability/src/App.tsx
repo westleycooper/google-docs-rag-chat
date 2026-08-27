@@ -117,7 +117,7 @@ export const App = () => {
           }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            RAGDrive · Architecture
+            RAGDrive · Live Architecture
           </Typography>
           <Chip
             size="small"

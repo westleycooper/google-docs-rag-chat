@@ -17,9 +17,9 @@ Ask a question; watch retrieval happen; get an answer with its sources.
 
 ![Chat](docs/screenshots/chat.png)
 
-> Shown here with no `ANTHROPIC_API_KEY` configured, which is why the model
-> picker says so. With a key, each turn streams its retrieval trace, a row of
-> source chips, and a live context meter in the right-hand panel.
+Each turn streams its retrieval trace — every ADR it read to answer — alongside
+a live context meter showing what's using the window and what would fall out
+next.
 
 ### Configuration
 
@@ -28,10 +28,10 @@ and manage evaluation datasets.
 
 ![Configuration](docs/screenshots/configuration.png)
 
-The skip list is the point. A folder the ingester was denied is reported with
-the principal it was denied to — because a silent skip is indistinguishable from
-an empty folder, and that ambiguity is how a RAG system ends up confidently
-telling you a document does not exist.
+The skip list is the point: a denied folder is reported with the principal it
+was denied to, because a silent skip is indistinguishable from an empty
+folder — and that's how a RAG system ends up confidently telling you a document
+doesn't exist.
 
 ### Architecture
 
@@ -82,9 +82,9 @@ rather than holding them in plaintext, so ingestion will not start.
      the corpus is whatever that person can see. Best for a shared drive.
    - **OAuth** — click **Connect Google Drive** and consent on Google's own
      screen. Works for personal Gmail, needs no admin, and fills in the
-     principal for you. Requires a one-time Google Cloud Console setup — see
-     `RAGOOGLE_GOOGLE_OAUTH_CLIENT_ID` in `.env.example` for the steps — and is
-     unavailable (with a clear error, not a broken redirect) until that's done.
+     principal for you. Requires a one-time Google Cloud Console setup (see
+     `RAGOOGLE_GOOGLE_OAUTH_CLIENT_ID` in `.env.example`); unavailable, with a
+     clear error rather than a broken redirect, until that's done.
 3. Either way, the credential is encrypted before it touches the database; no
    endpoint ever reads it back.
 4. Click **Browse** to pick root folders from the connected Drive, or paste a
@@ -100,38 +100,25 @@ Permission failures never fail the run. They are recorded, and shown to you.
 
 ## How it works
 
-```
-Google Drive ──► Ingestion ──► chunks + vectors ──► Postgres/pgvector
-                     │                                    │
-                     └── skips (audited) ─────────────┐   │
-                                                      ▼   ▼
-  question ──► dense search ─┐                     Configuration UI
-              lexical search ─┴─► RRF ─► rerank ─► Claude ─► answer + citations
-                     │                                         │
-                     └──────────── trace ──────────────────────┘
-```
+![How it works](docs/diagrams/how-it-works.svg)
 
 **Retrieval is hybrid.** Dense pgvector search finds things that *mean* the same;
 Postgres full-text finds things that *say* the same. Business documents are full
-of tokens that carry meaning without carrying semantics — invoice numbers,
-project codes, surnames — and embeddings smear exactly those. Ask about
-`PRJ-4471` and dense search alone returns documents about *that sort of thing*
-rather than the one containing the string.
+of tokens that carry meaning without semantics — invoice numbers, project codes,
+surnames — and embeddings smear exactly those: ask about `PRJ-4471` and dense
+search alone returns documents about *that sort of thing*, not the one
+containing the string. The two are fused with Reciprocal Rank Fusion, which
+reads only *rank* — cosine distance and text relevance aren't on a common scale,
+so mixing their raw values would hide a weighting that rots as the corpus
+changes. A cross-encoder then reranks the top ~50 down to the ~8 that enter the
+prompt, reading query and passage together so it can tell "mentions the topic"
+from "answers the question".
 
-The two are fused with Reciprocal Rank Fusion, which reads only *rank*, never
-score. Cosine distance and text relevance are not on a common scale, so any
-arithmetic mixing their raw values hides a weighting that rots as the corpus
-changes.
-
-A cross-encoder then reranks the top ~50 down to the ~8 that enter the prompt.
-It reads query and passage together, which is why it can tell "mentions the
-topic" from "answers the question".
-
-**The context window is visible and yours to manage.** Long RAG conversations
-fill the window, something falls out, and the assistant starts answering as
-though a document it cited three turns ago never existed. No error is raised.
-RAGDrive shows what is in the window, what it costs, and — before the next
-turn — exactly what would be pushed out, so you can drop something else instead.
+**The context window is visible and yours to manage.** Long conversations fill
+it, something falls out, and the assistant starts answering as though a
+document it cited earlier never existed — silently, no error raised. RAGDrive
+shows what's in the window, what it costs, and — before the next turn — exactly
+what would be pushed out, so you can drop something else instead.
 
 ---
 
