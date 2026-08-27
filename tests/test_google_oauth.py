@@ -112,6 +112,49 @@ async def test_a_missing_refresh_token_is_a_distinct_actionable_error():
             )
 
 
+async def test_a_token_missing_the_drive_scope_is_a_clear_actionable_error():
+    """Google silently drops a scope that isn't enabled on the OAuth consent
+    screen's Data Access configuration rather than rejecting the authorization
+    outright -- catching it here, at connect time, is the only way to avoid
+    storing a refresh token that looks connected but fails on the first real
+    Drive call. No USERINFO_PATH stub: a missing-scope token must never reach
+    that call at all."""
+    transport = _StubTransport(
+        {
+            TOKEN_PATH: httpx.Response(
+                200,
+                json={"access_token": "a", "refresh_token": "r", "scope": "openid email"},
+            ),
+        }
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(OAuthExchangeError, match=r"drive\.readonly"):
+            await exchange_code(
+                client, code="c", client_id="c", client_secret="s", redirect_uri="https://x"
+            )
+
+
+async def test_a_token_scope_covering_drive_readonly_succeeds():
+    transport = _StubTransport(
+        {
+            TOKEN_PATH: httpx.Response(
+                200,
+                json={
+                    "access_token": "a",
+                    "refresh_token": "r",
+                    "scope": "https://www.googleapis.com/auth/drive.readonly openid email",
+                },
+            ),
+            USERINFO_PATH: httpx.Response(200, json={"email": "x@example.com"}),
+        }
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        result = await exchange_code(
+            client, code="c", client_id="c", client_secret="s", redirect_uri="https://x"
+        )
+    assert result.refresh_token == "r"
+
+
 async def test_a_failed_userinfo_call_is_reported_as_a_partial_success():
     transport = _StubTransport(
         {

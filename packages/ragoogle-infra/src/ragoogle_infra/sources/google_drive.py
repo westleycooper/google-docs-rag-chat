@@ -22,6 +22,7 @@ from collections.abc import AsyncIterator, Callable
 from datetime import datetime
 from typing import Any
 
+from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -173,6 +174,19 @@ class GoogleDriveSource:
                     f"{self.principal} cannot list the contents of {parent_id!r}"
                 ) from error
             raise
+        except RefreshError as error:
+            # Distinct from an HttpError 403: this fails before any request to
+            # Drive is even made, because the stored refresh token itself no
+            # longer works (commonly: it was granted before drive.readonly was
+            # added to the OAuth consent screen's Data Access configuration, so
+            # Google silently issued a token that never covered Drive at all).
+            # Same fix as a denied folder either way -- reconnect -- so this
+            # reuses PermissionError rather than adding a second vocabulary the
+            # API layer would need its own mapping for.
+            raise PermissionError(
+                f"{self.principal}'s Google credential could not be refreshed "
+                f"({error}); reconnect Google Drive for this source."
+            ) from error
         return [{"id": f["id"], "name": f["name"]} for f in result.get("files", [])]
 
     # -- traversal --------------------------------------------------------

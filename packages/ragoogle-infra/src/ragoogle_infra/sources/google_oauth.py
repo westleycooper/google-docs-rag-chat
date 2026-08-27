@@ -118,6 +118,26 @@ async def exchange_code(
             "and reconnecting."
         )
 
+    # Google echoes the scopes it actually granted here -- and silently drops
+    # a requested scope that isn't enabled on the OAuth consent screen's Data
+    # Access configuration rather than rejecting the authorization outright,
+    # so a token can come back looking successful while missing Drive access
+    # entirely. Catching that here, before a refresh token that will always
+    # fail is ever stored, is the only way to fail at connect time instead of
+    # on the first Drive call afterwards. Absent when a caller doesn't model
+    # this field (tests, non-Google token endpoints) -- nothing to check then.
+    granted_scope = token_payload.get("scope")
+    if granted_scope is not None:
+        granted = set(granted_scope.split())
+        missing = [scope for scope in DRIVE_SCOPES if scope not in granted]
+        if missing:
+            raise OAuthExchangeError(
+                "Google granted access but not to Drive -- "
+                f"{', '.join(missing)} missing from the granted scope "
+                f"({granted_scope!r}). Add it under OAuth consent screen > Data "
+                "Access in Google Cloud Console, then reconnect."
+            )
+
     userinfo_response = await client.get(
         USERINFO_ENDPOINT, headers={"Authorization": f"Bearer {access_token}"}
     )

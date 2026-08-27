@@ -174,12 +174,19 @@ def client(request):
     container = Container(
         # Ping URLs disabled: pinging real container-network DNS names has no
         # place in a hermetic unit test. The ping logic itself is covered by
-        # test_topology_ping.py against a stub transport.
+        # test_topology_ping.py against a stub transport. OAuth client nulled
+        # for the same reason: Settings() otherwise falls through to whatever
+        # real .env sits at the repo root, and a developer with actual Google
+        # OAuth credentials configured for local docker-compose use would
+        # silently flip the "not configured" tests below to exercise a real
+        # redirect to accounts.google.com instead.
         settings=Settings(
             frontend_url=None,
             observability_url=None,
             anthropic_ping_url=None,
             voyage_ping_url=None,
+            google_oauth_client_id=None,
+            google_oauth_client_secret=None,
         ),
         engine=FakeEngine(healthy),  # type: ignore[arg-type]
         embeddings=embeddings,

@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 googleapiclient = pytest.importorskip("googleapiclient")
+from google.auth.exceptions import RefreshError  # noqa: E402
 from googleapiclient.errors import HttpError  # noqa: E402
 
 from ragoogle_core.ingestion.skip import SkipReason  # noqa: E402
@@ -49,16 +50,19 @@ class StubFiles:
     names folders that raise 403 on list.
     """
 
-    def __init__(self, pages, denied=(), media=None, media_errors=None) -> None:
+    def __init__(self, pages, denied=(), media=None, media_errors=None, refresh_error=()) -> None:
         self.pages = pages
         self.denied = set(denied)
         self.media = media or {}
         self.media_errors = media_errors or {}
+        self.refresh_error = set(refresh_error)
         self.calls: list[dict] = []
 
     def list(self, *, q, fields, pageSize, pageToken=None, **kw):  # noqa: N803
         self.calls.append({"q": q, "pageToken": pageToken, **kw})
         folder = q.split("'")[1]
+        if folder in self.refresh_error:
+            return StubRequest(error=RefreshError("invalid_scope: Bad Request"))
         if folder in self.denied:
             return StubRequest(error=http_error(403))
         pages = self.pages.get(folder, [{"files": []}])
@@ -449,6 +453,17 @@ async def test_list_folders_on_a_denied_parent_raises_permission_error():
     files = StubFiles(pages={}, denied={"secret-folder"})
     with pytest.raises(PermissionError, match=PRINCIPAL):
         await make_source(files).list_folders(parent_id="secret-folder")
+
+
+async def test_list_folders_with_an_unrefreshable_credential_raises_permission_error():
+    """A RefreshError (expired, revoked, or -- commonly -- a refresh token
+    granted before drive.readonly was added to the OAuth consent screen's Data
+    Access configuration) fails before any request to Drive is even made.
+    Same fix as a denied folder either way (reconnect), so it reuses the same
+    PermissionError vocabulary rather than surfacing as an unhandled 500."""
+    files = StubFiles(pages={}, refresh_error={"root"})
+    with pytest.raises(PermissionError, match=PRINCIPAL):
+        await make_source(files).list_folders()
 
 
 async def test_list_folders_of_an_empty_directory_is_an_empty_list():
